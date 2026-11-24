@@ -1,0 +1,3190 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketWhy — Institutional Stock Research &amp; Movement Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            terminal: {
+              bg: '#060911',
+              surface: '#0C1220',
+              elevated: '#131C2E',
+              border: '#1E293B',
+              borderLight: '#2B3A55',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #060911;
+      color: #F1F5F9;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #060911;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E293B;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    .glass-panel {
+      background: rgba(12, 18, 32, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid #1E293B;
+    }
+    @keyframes pulse-live {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .live-dot {
+      animation: pulse-live 1.8s infinite;
+    }
+    @keyframes flash-green {
+      0% { background-color: rgba(16, 185, 129, 0.35); }
+      100% { background-color: transparent; }
+    }
+    @keyframes flash-red {
+      0% { background-color: rgba(244, 63, 94, 0.35); }
+      100% { background-color: transparent; }
+    }
+    .tick-up {
+      animation: flash-green 0.9s ease-out;
+    }
+    .tick-down {
+      animation: flash-red 0.9s ease-out;
+    }
+    .fade-in {
+      animation: fadeIn 0.22s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-sky-500/30 selection:text-sky-200">
+
+  <!-- TOP LIVE STREAM & MARKET STATUS RIBBON -->
+  <div class="bg-[#080D18] border-b border-terminal-border text-xs">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span id="data-mode-badge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          Demo Research Dataset + 10,000+ Stock Search
+        </span>
+        <span id="stream-status-pill" class="hidden inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
+          <span id="stream-status-text">WebSocket + 15s Auto-Poll Active</span>
+        </span>
+        <span id="last-updated-label" class="text-slate-400 font-mono text-[11px]">
+          Updated: --:--:--
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="toggle-live-updates-btn" onclick="toggleLiveUpdates()" class="hidden px-2.5 py-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-medium transition text-[11px]">
+          Live Updates: ON
+        </button>
+        <button onclick="openLearnModal()" class="text-slate-400 hover:text-sky-400 transition flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Metric Guide</span>
+        </button>
+        <button onclick="openApiModal()" id="api-config-btn" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-terminal-elevated hover:bg-slate-800 border border-terminal-borderLight text-slate-200 font-medium transition">
+          <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          <span id="api-btn-label">Configure Live Finnhub API</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN HEADER & UNIVERSAL SEARCH -->
+  <header class="sticky top-0 z-40 glass-panel border-b border-terminal-border">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <!-- Brand -->
+      <div class="flex items-center gap-6">
+        <button onclick="navigate('home')" class="flex items-center gap-2.5 text-left group">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 group-hover:scale-105 transition">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          </div>
+          <div>
+            <span class="text-lg font-bold tracking-tight text-white">Market<span class="text-sky-400">Why</span></span>
+            <span class="hidden sm:block text-[10px] uppercase tracking-widest text-slate-400 -mt-1">Equity Intelligence</span>
+          </div>
+        </button>
+
+        <!-- Primary Navigation -->
+        <nav class="hidden lg:flex items-center gap-1">
+          <button onclick="navigate('home')" data-nav="home" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-terminal-elevated">Overview</button>
+          <button onclick="navigate('growth')" data-nav="growth" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-terminal-elevated/60 transition">Growth Radar</button>
+          <button onclick="navigate('compare')" data-nav="compare" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-terminal-elevated/60 transition">Compare</button>
+          <button onclick="navigate('watchlist')" data-nav="watchlist" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-terminal-elevated/60 transition flex items-center gap-1.5">
+            <span>Watchlist</span>
+            <span id="nav-watchlist-count" class="px-1.5 py-0.2 text-xs font-mono rounded bg-sky-500/20 text-sky-300">0</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Universal Search Bar (10,000+ Stocks) -->
+      <div class="relative flex-1 max-w-xl" id="global-search-wrapper">
+        <div class="relative flex items-center">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input
+            id="global-search-input"
+            type="text"
+            autocomplete="off"
+            placeholder="Search 10,000+ stocks by ticker, company, or exchange (e.g. NVDA, BHP.AX, TSLA)..."
+            class="w-full bg-[#080D18] border border-terminal-borderLight focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl pl-10 pr-24 py-2 text-sm text-white placeholder-slate-500 outline-none transition"
+          />
+          <span id="universe-count-badge" class="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-sky-400 bg-sky-500/10 border border-sky-500/20 rounded mr-1.5">
+            10,000+
+          </span>
+          <kbd class="hidden md:inline-block mr-2.5 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-terminal-elevated border border-terminal-border rounded">/</kbd>
+        </div>
+
+        <!-- Ranked Top Results Dropdown -->
+        <div id="search-dropdown" class="hidden absolute left-0 right-0 mt-2 bg-terminal-surface border border-terminal-borderLight rounded-xl shadow-2xl shadow-black/80 overflow-hidden z-50 max-h-[460px] overflow-y-auto">
+        </div>
+      </div>
+
+      <!-- Mobile Menu Trigger -->
+      <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-lg bg-terminal-elevated border border-terminal-border text-slate-300">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobile-menu" class="hidden lg:hidden border-t border-terminal-border bg-terminal-surface px-4 py-3 space-y-1">
+      <button onclick="navigate('home'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-white bg-terminal-elevated">Overview</button>
+      <button onclick="navigate('growth'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-terminal-elevated">Growth Radar</button>
+      <button onclick="navigate('compare'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-terminal-elevated">Compare Stocks</button>
+      <button onclick="navigate('watchlist'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-terminal-elevated">Watchlist</button>
+    </div>
+  </header>
+
+  <!-- RECENTLY VIEWED & WATCHLIST TICKER RIBBON -->
+  <div class="bg-[#090E1A] border-b border-terminal-border/80">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 py-2 flex items-center gap-3 overflow-x-auto text-xs whitespace-nowrap">
+      <span class="text-slate-500 font-semibold uppercase tracking-wider text-[10px] shrink-0">Quick Tape:</span>
+      <div id="quick-tape-list" class="flex items-center gap-2"></div>
+    </div>
+  </div>
+
+  <!-- MAIN VIEWPORT -->
+  <main id="app-root" class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-6">
+    <!-- Dynamic Views Render Here -->
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-terminal-border bg-[#070B14] mt-12">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-slate-400">
+      <div>
+        <div class="flex items-center gap-2 text-slate-200 font-semibold mb-1">
+          <span>MarketWhy Equity Research Terminal</span>
+          <span class="text-slate-600">•</span>
+          <span class="text-sky-400">10,000+ Stock Search &amp; Live Streaming Ready</span>
+        </div>
+        <p class="max-w-2xl text-slate-500 leading-relaxed">
+          Informational &amp; educational research only — not personalized financial advice. Confirmed corporate disclosures are explicitly separated from market commentary and hypothetical growth catalysts. Always verify figures against official SEC / ASX filings before investing.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-4 shrink-0">
+        <button onclick="navigate('home')" class="hover:text-white transition">Overview</button>
+        <button onclick="navigate('growth')" class="hover:text-white transition">Growth Radar</button>
+        <button onclick="navigate('compare')" class="hover:text-white transition">Compare</button>
+        <button onclick="openLearnModal()" class="hover:text-white transition">Metric Glossary</button>
+        <button onclick="openApiModal()" class="hover:text-white transition">Data Settings</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- FINNHUB API CONFIGURATION MODAL -->
+  <div id="api-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-terminal-surface border border-terminal-borderLight rounded-2xl max-w-lg w-full p-6 shadow-2xl fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          </div>
+          <h3 class="text-lg font-bold text-white">Finnhub Live Data &amp; Streaming</h3>
+        </div>
+        <button onclick="closeApiModal()" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <p class="text-sm text-slate-300 leading-relaxed mb-4">
+        Connect your Finnhub API key to unlock <strong>real-time WebSocket trade streaming</strong>, <strong>15-second live quote refreshes</strong>, the complete <strong>10,000+ US exchange directory</strong>, company financials, earnings surprises, and live news. Your key is stored locally in your browser (<code class="text-xs bg-terminal-elevated px-1.5 py-0.5 rounded text-sky-300">localStorage</code>).
+      </p>
+
+      <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5 mb-4 text-xs text-slate-400 space-y-1.5">
+        <div class="font-semibold text-slate-200">Live Engine Capabilities &amp; Free-Tier Notes:</div>
+        <ul class="list-disc pl-4 space-y-1">
+          <li><strong>Full 10,000+ US Stock Index:</strong> Automatically downloads and caches the entire NYSE/NASDAQ symbol list in your browser for instant zero-latency search.</li>
+          <li><strong>Real-Time Streaming:</strong> Subscribes active US tickers to <code class="text-sky-400">wss://ws.finnhub.io</code> plus 15s REST polling with automatic rate-limit protection (max 50 calls/min).</li>
+          <li><strong>Plan Boundaries:</strong> Free keys support US real-time quotes, profiles, metrics, earnings, and news. Historical candle charts or non-US quotes may display a clean restricted notice if blocked by your plan.</li>
+        </ul>
+      </div>
+
+      <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Finnhub API Key</label>
+      <input
+        id="finnhub-key-input"
+        type="password"
+        placeholder="Paste your Finnhub API token (e.g. d0abc123...)"
+        class="w-full bg-[#080D18] border border-terminal-borderLight focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none mb-2"
+      />
+      <div id="api-status-msg" class="text-xs mb-4 hidden"></div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-terminal-border">
+        <button onclick="clearFinnhubKey()" class="px-3 py-2 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition">
+          Disconnect &amp; Use Demo Mode
+        </button>
+        <div class="flex items-center gap-2">
+          <a href="https://finnhub.io/register" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-terminal-elevated border border-terminal-border transition">
+            Get Free Key ↗
+          </a>
+          <button onclick="saveFinnhubKey()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-sky-500 hover:bg-sky-400 text-slate-950 transition">
+            Save &amp; Connect Live
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEGINNER METRIC EXPLAINER MODAL -->
+  <div id="learn-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-terminal-surface border border-terminal-borderLight rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[85vh] overflow-y-auto fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">MarketWhy Beginner's Financial Metric Guide</h3>
+        <button onclick="closeLearnModal()" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3.5 text-xs">
+        <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+          <div class="font-bold text-sky-400 mb-1">Market Capitalisation (Market Cap)</div>
+          <p class="text-slate-300 leading-relaxed">Total dollar value of all a company's shares combined (Share Price × Total Shares). Measures company size rather than whether a single share is "cheap" or "expensive."</p>
+        </div>
+        <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+          <div class="font-bold text-sky-400 mb-1">P/E Ratio (Price-to-Earnings)</div>
+          <p class="text-slate-300 leading-relaxed">How much investors pay for every $1 of annual company profit. A high P/E (e.g., 45x) means the market expects rapid future growth; a low P/E (e.g., 12x) signals mature or slower growth.</p>
+        </div>
+        <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+          <div class="font-bold text-sky-400 mb-1">52-Week High &amp; Low</div>
+          <p class="text-slate-300 leading-relaxed">The highest and lowest prices the stock has traded at over the past 12 months. Helps show whether a stock is near peak momentum or recovering from a pullback.</p>
+        </div>
+        <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+          <div class="font-bold text-sky-400 mb-1">Revenue Growth vs. Net Margin</div>
+          <p class="text-slate-300 leading-relaxed"><strong>Revenue Growth</strong> measures how fast top-line sales are expanding. <strong>Net Profit Margin</strong> shows what percentage of sales remains as actual profit after all expenses and taxes.</p>
+        </div>
+        <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+          <div class="font-bold text-sky-400 mb-1">Confirmed Facts vs. Explanations</div>
+          <p class="text-slate-300 leading-relaxed">Stock prices move on expectations. MarketWhy separates verified filings (earnings beats, guidance) from plausible market drivers (sector rotation, interest rates).</p>
+        </div>
+        <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+          <div class="font-bold text-sky-400 mb-1">US vs. ASX (.AX) Tickers</div>
+          <p class="text-slate-300 leading-relaxed">US stocks trade in USD on NASDAQ/NYSE (e.g., <code class="text-sky-300">NVDA</code>). Australian stocks trade in AUD on the ASX and carry the <code class="text-sky-300">.AX</code> suffix (e.g., <code class="text-sky-300">BHP.AX</code>).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ============================================================================
+// 0. OPTIONAL SHARED KEY & CORE CONFIGURATION
+// ============================================================================
+const DEFAULT_FINNHUB_KEY = "";
+
+// ============================================================================
+// 1. CURATED DEEP RESEARCH DATASET (12 FLAGSHIP US & ASX EQUITIES)
+// ============================================================================
+const DEMO_STOCKS = {
+  "NVDA": {
+    ticker: "NVDA",
+    name: "NVIDIA Corporation",
+    exchange: "NASDAQ",
+    country: "United States",
+    currency: "USD",
+    sector: "Semiconductors & AI Infrastructure",
+    logoBg: "from-emerald-500/20 to-teal-600/20 text-emerald-400 border-emerald-500/30",
+    price: 138.40,
+    change: 4.82,
+    changePct: 3.61,
+    marketCap: 3390000000000,
+    peRatio: 54.2,
+    high52: 149.77,
+    low52: 47.32,
+    volume: "248.6M",
+    revGrowth: 94.0,
+    netMargin: 55.6,
+    roe: 115.2,
+    dividendYield: 0.03,
+    isGrowthCandidate: true,
+    growthTheme: "AI Compute & Sovereign Cloud",
+    growthCatalystSummary: "Hyperscaler capital expenditure on Blackwell GPU clusters and recurring CUDA/NIM enterprise software licensing.",
+    description: "NVIDIA designs accelerated computing hardware, data-center GPUs, high-speed networking interconnects, and the CUDA software ecosystem powering modern artificial intelligence training and inference.",
+    movementSummary: {
+      headline: "Data-center rack shipments and hyperscaler AI capex commitments continue to anchor demand.",
+      confirmedFacts: [
+        "Quarterly Data Center revenue expanded over 90% year-over-year, accounting for more than 87% of total company revenue (Company Quarterly Filing).",
+        "Major cloud service providers (Microsoft, Alphabet, Amazon, Meta) reaffirmed multi-billion-dollar annual AI infrastructure capital expenditure budgets.",
+        "Next-generation Blackwell architecture production shipments have entered volume ramp across cloud partners."
+      ],
+      possibleExplanations: [
+        "Institutional rotation back into AI infrastructure leaders following resilient semiconductor supply-chain commentary in Taiwan.",
+        "Options market positioning and momentum inflows ahead of upcoming industry developer conferences.",
+        "Broader NASDAQ strength supported by stabilizing Treasury yields."
+      ]
+    },
+    bullCase: [
+      { point: "Full-stack moat combining GPUs, NVLink networking, and the sticky CUDA software ecosystem.", source: "Company 10-K & Developer Ecosystem Data", date: "Recent Filing" },
+      { point: "Sovereign AI initiatives globally are diversifying demand beyond the top 4 US hyperscalers.", source: "Management Earnings Call Commentary", date: "Latest Quarter" },
+      { point: "Industry-leading gross margins (~75%) generate substantial free cash flow for R&D and buybacks.", source: "Quarterly Financial Statement", date: "Latest Quarter" }
+    ],
+    bearCase: [
+      { point: "High customer concentration: roughly 40%+ of revenue stems from a handful of mega-cap cloud buyers.", source: "SEC Filing Risk Factors", date: "Annual Report" },
+      { point: "Custom ASICs (Google TPU, AWS Trainium) and AMD Instinct GPUs aim to capture inference workloads.", source: "Semiconductor Industry Analysis", date: "2025–2026" },
+      { point: "US export restrictions on advanced chips to China limit addressable TAM in Asia.", source: "US BIS Export Control Rules", date: "Ongoing" }
+    ],
+    news: [
+      { title: "Hyperscalers Signal Sustained AI Infrastructure Spending Into Next Fiscal Year", source: "MarketWhy Wire (Demo)", date: "2h ago", summary: "Cloud capital expenditure forecasts remain elevated as enterprises transition from model training to agentic AI deployment.", url: "https://finance.yahoo.com/quote/NVDA" },
+      { title: "Enterprise Software Adoption Adds Recurring Layer to Data Center Hardware", source: "Tech & Silicon Brief (Demo)", date: "1d ago", summary: "NVIDIA AI Enterprise subscriptions gain traction among healthcare and financial institutions building private inference pipelines.", url: "https://finance.yahoo.com/quote/NVDA" }
+    ],
+    history: {
+      "1D": [133.9, 134.5, 135.2, 134.8, 136.1, 137.0, 137.8, 138.4],
+      "1W": [129.5, 131.0, 130.2, 133.6, 135.1, 138.4],
+      "1M": [118.0, 121.5, 124.0, 122.8, 127.5, 131.2, 134.9, 138.4],
+      "3M": [104.2, 110.5, 115.8, 112.4, 121.0, 128.6, 133.0, 138.4],
+      "6M": [88.4, 95.0, 102.3, 114.0, 119.5, 126.8, 132.1, 138.4],
+      "1Y": [49.5, 61.2, 74.8, 86.0, 95.4, 112.0, 124.5, 138.4],
+      "5Y": [6.2, 13.5, 21.0, 15.8, 45.0, 92.0, 138.4]
+    }
+  },
+  "MSFT": {
+    ticker: "MSFT",
+    name: "Microsoft Corporation",
+    exchange: "NASDAQ",
+    country: "United States",
+    currency: "USD",
+    sector: "Enterprise Cloud & Software",
+    logoBg: "from-sky-500/20 to-blue-600/20 text-sky-400 border-sky-500/30",
+    price: 428.50,
+    change: 3.15,
+    changePct: 0.74,
+    marketCap: 3180000000000,
+    peRatio: 35.4,
+    high52: 468.35,
+    low52: 385.58,
+    volume: "18.4M",
+    revGrowth: 16.0,
+    netMargin: 35.6,
+    roe: 37.1,
+    dividendYield: 0.78,
+    isGrowthCandidate: true,
+    growthTheme: "Enterprise Cloud & Copilot SaaS",
+    growthCatalystSummary: "Azure cloud backlog conversion and commercial Microsoft 365 Copilot seat expansion across Fortune 500 enterprises.",
+    description: "Microsoft develops enterprise cloud infrastructure (Azure), productivity suites (Microsoft 365), developer tools (GitHub), enterprise ERP/CRM (Dynamics), and personal computing platforms.",
+    movementSummary: {
+      headline: "Steady Azure commercial bookings growth offsets elevated AI data-center depreciation costs.",
+      confirmedFacts: [
+        "Microsoft Cloud quarterly revenue surpassed $38B, growing over 20% year-over-year in constant currency (Earnings Release).",
+        "AI services contributed roughly 12 percentage points to Azure's year-over-year growth rate.",
+        "Capital expenditures rose sequentially to expand global data-center power and GPU capacity."
+      ],
+      possibleExplanations: [
+        "Defensive institutional appetite for mega-cap balance sheets with AAA credit ratings.",
+        "Investor debate over the payback timeline between upfront AI capex and software margin expansion."
+      ]
+    },
+    bullCase: [
+      { point: "Deep enterprise distribution allows seamless upselling of AI Copilot across 400M+ paid Office seats.", source: "Microsoft Annual Report", date: "FY2025" },
+      { point: "Commercial remaining performance obligations (RPO) provide high multi-year revenue visibility.", source: "Quarterly Form 10-Q", date: "Latest Quarter" }
+    ],
+    bearCase: [
+      { point: "Rising depreciation from $50B+ annual capex could pressure near-term operating margins.", source: "CFO Earnings Guidance", date: "Latest Quarter" },
+      { point: "Intense cloud price competition from AWS and Google Cloud.", source: "Cloud Market Benchmarks", date: "Ongoing" }
+    ],
+    news: [
+      { title: "Azure AI Studio Sees Surge in Enterprise Workflow Deployments", source: "Enterprise Cloud Daily (Demo)", date: "5h ago", summary: "Fortune 500 IT buyers consolidate AI governance and model routing within existing Azure agreements.", url: "https://finance.yahoo.com/quote/MSFT" }
+    ],
+    history: {
+      "1D": [425.1, 426.0, 425.8, 427.2, 428.0, 428.5],
+      "1W": [421.0, 422.4, 424.1, 425.0, 426.9, 428.5],
+      "1M": [415.2, 418.0, 420.5, 419.0, 423.4, 426.1, 428.5],
+      "3M": [408.0, 412.5, 416.0, 414.2, 420.8, 425.0, 428.5],
+      "6M": [418.5, 430.0, 445.0, 422.0, 419.5, 424.0, 428.5],
+      "1Y": [389.0, 405.2, 420.4, 442.1, 431.0, 422.5, 428.5],
+      "5Y": [185.0, 245.0, 298.0, 255.0, 340.0, 405.0, 428.5]
+    }
+  },
+  "AAPL": {
+    ticker: "AAPL",
+    name: "Apple Inc.",
+    exchange: "NASDAQ",
+    country: "United States",
+    currency: "USD",
+    sector: "Consumer Technology & Services",
+    logoBg: "from-slate-500/20 to-zinc-600/20 text-slate-200 border-slate-500/30",
+    price: 229.80,
+    change: -1.42,
+    changePct: -0.61,
+    marketCap: 3480000000000,
+    peRatio: 34.8,
+    high52: 237.23,
+    low52: 164.08,
+    volume: "41.2M",
+    revGrowth: 6.1,
+    netMargin: 26.4,
+    roe: 147.0,
+    dividendYield: 0.44,
+    isGrowthCandidate: false,
+    growthTheme: "High-Margin Services & Installed Base",
+    growthCatalystSummary: "Over 2.2 billion active devices driving recurring App Store, iCloud, and Apple Pay services revenue.",
+    description: "Apple designs consumer hardware including iPhone, Mac, iPad, and Apple Watch, integrated with proprietary silicon and a rapidly growing digital Services ecosystem.",
+    movementSummary: {
+      headline: "Slight pullback as investors weigh smartphone replacement cycles in China against record Services margins.",
+      confirmedFacts: [
+        "Services segment reached an all-time revenue high with gross margins exceeding 74% (Quarterly Filing).",
+        "Active installed base of devices reached a new record across all geographic segments.",
+        "Board authorized ongoing share repurchases funded by ~$100B+ in annual free cash flow."
+      ],
+      possibleExplanations: [
+        "Profit-taking near 52-week highs as third-party smartphone shipment trackers showed mixed regional demand in Greater China.",
+        "Valuation multiple expansion leaving limited near-term upside without an accelerated iPhone upgrade cycle."
+      ]
+    },
+    bullCase: [
+      { point: "Unmatched customer retention across 2.2B+ active devices powers high-margin recurring Services.", source: "Apple Quarterly Earnings", date: "Latest Quarter" },
+      { point: "Custom Apple Silicon lowers component costs while boosting battery and on-device AI efficiency.", source: "Hardware Architecture Brief", date: "2025" }
+    ],
+    bearCase: [
+      { point: "Antitrust scrutiny in the US and EU threatens App Store commission rates and default search payments.", source: "DOJ & EU DMA Filings", date: "Ongoing" },
+      { point: "Slower top-line revenue growth (~6%) compared to a ~35x trailing P/E valuation multiple.", source: "Valuation Comparison", date: "Current" }
+    ],
+    news: [
+      { title: "Services Gross Margin Reaches Record High as Paid Subscriptions Top 1 Billion", source: "Consumer Tech Ledger (Demo)", date: "6h ago", summary: "Recurring digital services continue to cushion hardware seasonality.", url: "https://finance.yahoo.com/quote/AAPL" }
+    ],
+    history: {
+      "1D": [231.2, 230.8, 230.1, 229.5, 230.0, 229.8],
+      "1W": [233.4, 232.1, 231.5, 230.9, 231.2, 229.8],
+      "1M": [224.0, 226.5, 228.9, 232.0, 234.1, 231.2, 229.8],
+      "3M": [216.5, 220.0, 225.4, 222.1, 228.0, 232.5, 229.8],
+      "6M": [189.0, 196.4, 212.0, 224.5, 221.0, 227.8, 229.8],
+      "1Y": [172.0, 185.0, 170.5, 192.0, 218.0, 226.4, 229.8],
+      "5Y": [78.0, 125.0, 152.0, 145.0, 182.0, 215.0, 229.8]
+    }
+  },
+  "AMZN": {
+    ticker: "AMZN",
+    name: "Amazon.com, Inc.",
+    exchange: "NASDAQ",
+    country: "United States",
+    currency: "USD",
+    sector: "Cloud Computing & E-Commerce",
+    logoBg: "from-amber-500/20 to-orange-600/20 text-amber-400 border-amber-500/30",
+    price: 208.15,
+    change: 3.90,
+    changePct: 1.91,
+    marketCap: 2180000000000,
+    peRatio: 42.1,
+    high52: 215.90,
+    low52: 151.61,
+    volume: "36.8M",
+    revGrowth: 11.4,
+    netMargin: 8.1,
+    roe: 22.4,
+    dividendYield: 0.0,
+    isGrowthCandidate: true,
+    growthTheme: "AWS Cloud & High-Margin Retail Ads",
+    growthCatalystSummary: "Regionalized fulfillment network driving retail margin expansion alongside $50B+ high-margin digital advertising.",
+    description: "Amazon operates the world's largest cloud infrastructure provider (AWS), global e-commerce marketplaces, Prime subscription ecosystem, and a rapidly scaling digital advertising business.",
+    movementSummary: {
+      headline: "Operating income beats expectations on North America fulfillment efficiency and AWS growth.",
+      confirmedFacts: [
+        "AWS operating margins expanded above 35% as enterprise cloud cost-optimization headwinds eased (Earnings Release).",
+        "Advertising services revenue grew nearly 19% year-over-year, bolstered by Prime Video ad tier adoption.",
+        "Regionalized US fulfillment hubs lowered per-unit shipping distances and delivery costs."
+      ],
+      possibleExplanations: [
+        "Buy-side accumulation driven by multi-year operating margin expansion rather than pure top-line acceleration.",
+        "Positive read-through from resilient US consumer e-commerce spending."
+      ]
+    },
+    bullCase: [
+      { point: "Three profit engines (AWS, Advertising, 3P Seller Services) now generate the majority of operating income.", source: "Amazon Segment Reporting", date: "Latest Quarter" },
+      { point: "Robotics and regional fulfillment continue structurally lowering retail cost-to-serve.", source: "Logistics Operations Update", date: "2025" }
+    ],
+    bearCase: [
+      { point: "Heavy capital expenditure for AI servers and Project Kuiper satellites compresses near-term free cash flow.", source: "Cash Flow Statement", date: "Latest Quarter" },
+      { point: "FTC antitrust litigation challenges marketplace seller practices.", source: "US Federal Court Filings", date: "Ongoing" }
+    ],
+    news: [
+      { title: "Amazon Retail Operating Margins Hit Multi-Year High on Regional Fulfillment", source: "Commerce & Cloud Weekly (Demo)", date: "4h ago", summary: "Shorter delivery routes and higher ad attach rates lift North America profitability.", url: "https://finance.yahoo.com/quote/AMZN" }
+    ],
+    history: {
+      "1D": [204.2, 205.0, 206.1, 205.8, 207.4, 208.15],
+      "1W": [199.5, 201.2, 203.0, 204.8, 204.25, 208.15],
+      "1M": [188.0, 192.4, 196.0, 195.2, 201.5, 204.25, 208.15],
+      "3M": [178.0, 184.5, 189.0, 186.2, 194.0, 202.0, 208.15],
+      "6M": [181.0, 186.0, 193.5, 175.0, 188.0, 198.5, 208.15],
+      "1Y": [153.0, 168.0, 178.5, 185.0, 182.0, 196.0, 208.15],
+      "5Y": [92.0, 158.0, 166.0, 98.0, 145.0, 188.0, 208.15]
+    }
+  },
+  "LLY": {
+    ticker: "LLY",
+    name: "Eli Lilly and Company",
+    exchange: "NYSE",
+    country: "United States",
+    currency: "USD",
+    sector: "Pharmaceuticals & GLP-1 Therapeutics",
+    logoBg: "from-rose-500/20 to-red-600/20 text-rose-400 border-rose-500/30",
+    price: 842.60,
+    change: 14.30,
+    changePct: 1.73,
+    marketCap: 799000000000,
+    peRatio: 68.4,
+    high52: 972.53,
+    low52: 618.00,
+    volume: "3.4M",
+    revGrowth: 36.0,
+    netMargin: 21.8,
+    roe: 64.5,
+    dividendYield: 0.62,
+    isGrowthCandidate: true,
+    growthTheme: "GLP-1 Metabolic & Oncology Pipeline",
+    growthCatalystSummary: "Global manufacturing capacity expansion for tirzepatide (Mounjaro/Zepbound) plus late-stage oral GLP-1 trials.",
+    description: "Eli Lilly is a global pharmaceutical leader developing therapies across diabetes, obesity (incretin/GLP-1 medicines), oncology, immunology, and neurodegeneration.",
+    movementSummary: {
+      headline: "Manufacturing supply expansion and new clinical cardiovascular outcome data support prescription growth.",
+      confirmedFacts: [
+        "Incretin franchise (Mounjaro and Zepbound) drove over 35% consolidated revenue growth as new US fill-finish lines came online (Quarterly Report).",
+        "Phase 3 clinical trials demonstrated significant reductions in heart failure risk among obese adults."
+      ],
+      possibleExplanations: [
+        "Rebound buying following prior quarter wholesaler stocking fluctuations.",
+        "Long-term healthcare fund inflows seeking secular volume growth independent of economic cycles."
+      ]
+    },
+    bullCase: [
+      { point: "Category-leading clinical efficacy in obesity and type-2 diabetes with massive global addressable patient pool.", source: "NEJM Clinical Trial Publications", date: "2024–2025" },
+      { point: "Oral GLP-1 candidate (orforglipron) could unlock scalable, non-refrigerated global distribution.", source: "Lilly R&D Pipeline Update", date: "Latest Quarter" }
+    ],
+    bearCase: [
+      { point: "Premium forward earnings multiple leaves stock sensitive to any quarterly prescription or inventory misses.", source: "Healthcare Equity Research", date: "Current" },
+      { point: "Intensifying competition from Novo Nordisk and next-generation biopharma entrants plus payer pricing pressure.", source: "Pharma Industry Outlook", date: "2025–2026" }
+    ],
+    news: [
+      { title: "Eli Lilly Expands Sterile Injectable Manufacturing Capacity in North Carolina and Europe", source: "BioPharma Monitor (Demo)", date: "8h ago", summary: "New production lines aim to resolve supply bottlenecks for metabolic therapies.", url: "https://finance.yahoo.com/quote/LLY" }
+    ],
+    history: {
+      "1D": [828.3, 831.0, 835.4, 834.0, 839.2, 842.6],
+      "1W": [815.0, 820.4, 826.0, 824.5, 828.3, 842.6],
+      "1M": [885.0, 860.0, 810.0, 818.5, 825.0, 834.0, 842.6],
+      "3M": [910.0, 935.0, 895.0, 870.0, 820.0, 830.0, 842.6],
+      "6M": [780.0, 825.0, 890.0, 945.0, 885.0, 825.0, 842.6],
+      "1Y": [625.0, 710.0, 765.0, 820.0, 915.0, 860.0, 842.6],
+      "5Y": [145.0, 210.0, 315.0, 365.0, 580.0, 790.0, 842.6]
+    }
+  },
+  "PLTR": {
+    ticker: "PLTR",
+    name: "Palantir Technologies Inc.",
+    exchange: "NYSE",
+    country: "United States",
+    currency: "USD",
+    sector: "Enterprise AI & Defense Software",
+    logoBg: "from-indigo-500/20 to-violet-600/20 text-indigo-400 border-indigo-500/30",
+    price: 61.20,
+    change: 2.85,
+    changePct: 4.88,
+    marketCap: 139000000000,
+    peRatio: 148.0,
+    high52: 66.00,
+    low52: 15.66,
+    volume: "84.5M",
+    revGrowth: 30.0,
+    netMargin: 19.5,
+    roe: 12.8,
+    dividendYield: 0.0,
+    isGrowthCandidate: true,
+    growthTheme: "Enterprise AIP & Defense Ontology",
+    growthCatalystSummary: "Rapid US commercial customer conversion via AIP Bootcamps alongside multi-year US defense software contracts.",
+    description: "Palantir builds enterprise data operating systems (Foundry, Gotham, Apollo, and AIP) enabling defense agencies and commercial corporations to integrate operational data with AI models.",
+    movementSummary: {
+      headline: "Accelerating US commercial revenue growth and S&P 500 index inclusion fuel strong momentum.",
+      confirmedFacts: [
+        "US commercial revenue grew over 50% year-over-year, driven by Artificial Intelligence Platform (AIP) bootcamp conversions (Earnings Release).",
+        "GAAP operating profitability has expanded for eight consecutive quarters.",
+        "Added to the S&P 500 index, triggering passive index fund inflows."
+      ],
+      possibleExplanations: [
+        "High retail and momentum-fund participation amplifying daily price swings.",
+        "Investors pricing in sustained multi-year enterprise software adoption despite a rich valuation multiple."
+      ]
+    },
+    bullCase: [
+      { point: "Ontology software layer acts as a sticky operational control plane connecting LLMs to live enterprise data.", source: "Palantir Customer Case Studies", date: "Latest Quarter" },
+      { point: "Rule-of-40 score above 65 places it in the top decile of public enterprise software companies.", source: "Quarterly Shareholder Letter", date: "Latest Quarter" }
+    ],
+    bearCase: [
+      { point: "Valuation above 40x forward sales and >140x earnings embeds aggressive multi-year perfection.", source: "Software Valuation Multiples", date: "Current" },
+      { point: "European commercial growth lags US adoption due to slower enterprise IT spending.", source: "Geographic Revenue Breakdown", date: "Latest Quarter" }
+    ],
+    news: [
+      { title: "US Commercial Customer Count Surges as Enterprises Deploy Operational AI Agents", source: "Defense & Enterprise Tech (Demo)", date: "3h ago", summary: "Five-day bootcamp sales motion shortens enterprise procurement cycles.", url: "https://finance.yahoo.com/quote/PLTR" }
+    ],
+    history: {
+      "1D": [58.35, 59.10, 59.80, 60.20, 60.75, 61.20],
+      "1W": [54.20, 55.80, 57.10, 58.00, 58.35, 61.20],
+      "1M": [42.50, 44.80, 49.20, 53.00, 56.40, 58.35, 61.20],
+      "3M": [31.20, 35.40, 37.80, 41.50, 48.00, 55.20, 61.20],
+      "6M": [21.50, 24.80, 28.40, 32.00, 37.50, 49.00, 61.20],
+      "1Y": [16.80, 19.50, 24.20, 22.80, 28.50, 43.00, 61.20],
+      "5Y": [9.50, 24.00, 18.20, 7.40, 17.50, 36.00, 61.20]
+    }
+  },
+  "BHP.AX": {
+    ticker: "BHP.AX",
+    name: "BHP Group Limited",
+    exchange: "ASX",
+    country: "Australia",
+    currency: "AUD",
+    sector: "Diversified Mining (Iron Ore & Copper)",
+    logoBg: "from-orange-500/20 to-amber-600/20 text-orange-400 border-orange-500/30",
+    price: 41.28,
+    change: 0.64,
+    changePct: 1.57,
+    marketCap: 209000000000,
+    peRatio: 14.6,
+    high52: 50.84,
+    low52: 38.28,
+    volume: "9.8M",
+    revGrowth: 3.4,
+    netMargin: 24.5,
+    roe: 29.8,
+    dividendYield: 5.45,
+    isGrowthCandidate: false,
+    growthTheme: "Global Copper Electrification & Pilbara Iron Ore",
+    growthCatalystSummary: "Tier-1 Pilbara low-cost iron ore cash flows funding major copper growth projects in Chile and South Australia.",
+    description: "BHP is the world's largest listed mining company, producing iron ore, metallurgical coal, and copper across low-cost Tier-1 assets in Western Australia, South Australia, and Chile.",
+    movementSummary: {
+      headline: "Rebound in Singapore iron ore futures and copper prices lifts ASX resource heavyweights.",
+      confirmedFacts: [
+        "Western Australia Iron Ore (WAIO) achieved record annual production at industry-lowest unit cash costs below US$18/tonne (ASX Operational Review).",
+        "Copper output grew ~9% year-over-year following Escondida grade improvements and South Australian asset integration."
+      ],
+      possibleExplanations: [
+        "Targeted Chinese monetary and property-sector stimulus announcements supporting steelmaking raw material sentiment.",
+        "Australian dollar movements boosting translated USD commodity revenues."
+      ]
+    },
+    bullCase: [
+      { point: "Lowest-cost global iron ore producer ensures positive free cash flow even during commodity downturns.", source: "BHP Operational Review (ASX)", date: "Latest Half" },
+      { point: "Growing copper exposure positions BHP for global grid electrification and data-center power demand.", source: "BHP Strategy Presentation", date: "2025" }
+    ],
+    bearCase: [
+      { point: "Heavy earnings sensitivity to Chinese residential construction and steel mill margins.", source: "Commodity Sensitivity Disclosure", date: "Annual Report" },
+      { point: "Rising capital expenditure requirements for Jansen potash and Chilean copper expansions.", source: "Capex Guidance (ASX)", date: "Latest Release" }
+    ],
+    news: [
+      { title: "ASX Materials Index Advances as Iron Ore Futures Recover Above US$104/t", source: "Sydney Resources Desk (Demo)", date: "3h ago", summary: "BHP and Rio Tinto lead ASX 200 gains following improved Chinese port inventory drawdowns.", url: "https://finance.yahoo.com/quote/BHP.AX" }
+    ],
+    history: {
+      "1D": [40.64, 40.80, 40.95, 41.10, 41.18, 41.28],
+      "1W": [40.10, 40.35, 40.50, 40.40, 40.64, 41.28],
+      "1M": [42.80, 41.90, 40.50, 39.80, 40.20, 40.64, 41.28],
+      "3M": [41.50, 40.20, 39.10, 43.40, 42.10, 40.80, 41.28],
+      "6M": [44.20, 43.10, 41.80, 39.50, 42.60, 41.50, 41.28],
+      "1Y": [46.50, 49.20, 44.80, 43.50, 42.10, 40.40, 41.28],
+      "5Y": [34.00, 46.00, 42.50, 39.00, 45.20, 44.00, 41.28]
+    }
+  },
+  "CBA.AX": {
+    ticker: "CBA.AX",
+    name: "Commonwealth Bank of Australia",
+    exchange: "ASX",
+    country: "Australia",
+    currency: "AUD",
+    sector: "Retail & Commercial Banking",
+    logoBg: "from-yellow-500/20 to-amber-500/20 text-yellow-400 border-yellow-500/30",
+    price: 148.90,
+    change: 1.12,
+    changePct: 0.76,
+    marketCap: 249000000000,
+    peRatio: 26.2,
+    high52: 151.45,
+    low52: 103.50,
+    volume: "2.1M",
+    revGrowth: 4.2,
+    netMargin: 34.8,
+    roe: 13.6,
+    dividendYield: 3.12,
+    isGrowthCandidate: false,
+    growthTheme: "Australian Deposit Franchise & Digital Banking",
+    growthCatalystSummary: "Leading retail deposit share, resilient net interest margins, and disciplined credit provisioning.",
+    description: "Commonwealth Bank of Australia is Australia's largest retail bank by market capitalization and mortgage share, providing retail, business, and institutional banking across Australia and New Zealand.",
+    movementSummary: {
+      headline: "Resilient net interest margins and low loan arrears sustain institutional flows into Australia's largest bank.",
+      confirmedFacts: [
+        "Cash net profit after tax remained steady at ~$9.8B with CET1 capital ratio comfortably above APRA minimums (ASX Announcement).",
+        "Home loan arrears ticked up modestly but remain well below historical stress levels.",
+        "Board maintained a fully franked dividend payout ratio near 75% of cash earnings."
+      ],
+      possibleExplanations: [
+        "Superannuation fund passive inflows and rotation out of cyclical miners into domestic banks.",
+        "Higher-for-longer RBA cash rate supporting deposit margins."
+      ]
+    },
+    bullCase: [
+      { point: "Dominant low-cost retail transaction deposit base provides structural funding advantage over peers.", source: "CBA Annual Results (ASX)", date: "Latest Fiscal Year" },
+      { point: "Industry-leading mobile banking app drives superior customer acquisition and cross-sell.", source: "APRA & Customer NPS Surveys", date: "2025" }
+    ],
+    bearCase: [
+      { point: "Trading at ~26x earnings and >3.3x book value—among the highest valuations for any developed-market bank.", source: "Global Banking Valuation Comparison", date: "Current" },
+      { point: "Intense Australian mortgage refinancing competition caps net interest margin upside.", source: "RBA & Banking Sector Commentary", date: "Ongoing" }
+    ],
+    news: [
+      { title: "Australian Major Banks Hold Credit Quality Steady Despite Elevated Household Rates", source: "Australian Financial Wire (Demo)", date: "5h ago", summary: "Low unemployment continues to buffer Australian mortgage portfolios against delinquency spikes.", url: "https://finance.yahoo.com/quote/CBA.AX" }
+    ],
+    history: {
+      "1D": [147.78, 148.00, 148.35, 148.20, 148.60, 148.90],
+      "1W": [145.20, 146.10, 146.80, 147.10, 147.78, 148.90],
+      "1M": [141.00, 142.80, 144.50, 143.90, 146.20, 147.78, 148.90],
+      "3M": [134.50, 137.00, 139.80, 141.20, 144.00, 146.50, 148.90],
+      "6M": [119.50, 124.00, 128.50, 134.00, 139.00, 144.20, 148.90],
+      "1Y": [104.20, 111.50, 117.00, 121.40, 131.00, 141.50, 148.90],
+      "5Y": [72.00, 88.00, 102.00, 99.00, 105.00, 126.00, 148.90]
+    }
+  },
+  "CSL.AX": {
+    ticker: "CSL.AX",
+    name: "CSL Limited",
+    exchange: "ASX",
+    country: "Australia",
+    currency: "AUD",
+    sector: "Biotechnology & Plasma Therapies",
+    logoBg: "from-cyan-500/20 to-teal-600/20 text-cyan-400 border-cyan-500/30",
+    price: 286.40,
+    change: 3.70,
+    changePct: 1.31,
+    marketCap: 138500000000,
+    peRatio: 31.8,
+    high52: 312.80,
+    low52: 268.10,
+    volume: "1.1M",
+    revGrowth: 11.2,
+    netMargin: 19.8,
+    roe: 15.9,
+    dividendYield: 1.42,
+    isGrowthCandidate: true,
+    growthTheme: "Plasma Margin Recovery & Rare Disease R&D",
+    growthCatalystSummary: "Rika plasma collection rollout lowering unit collection costs and driving multi-year Behring gross margin recovery.",
+    description: "CSL is a global biotechnology leader specializing in plasma-derived therapies (CSL Behring), influenza vaccines (CSL Seqirus), and iron deficiency / nephrology treatments (CSL Vifor).",
+    movementSummary: {
+      headline: "Plasma collection cost reductions and double-digit immunoglobulin demand underpin earnings growth.",
+      confirmedFacts: [
+        "CSL Behring immunoglobulin sales grew over 13% in constant currency across US and European hospitals (ASX Earnings Update).",
+        "Full deployment of Rika plasma plasmapheresis devices reduced average donation times by ~30%."
+      ],
+      possibleExplanations: [
+        "Healthcare defensive rotation as investors look for double-digit constant-currency EPS growth on the ASX.",
+        "Confidence in multi-year gross margin recovery toward pre-pandemic levels."
+      ]
+    },
+    bullCase: [
+      { point: "High barriers to entry in global plasma collection network (340+ centers) and fractionated biologics.", source: "CSL Annual Report", date: "FY2025" },
+      { point: "Horizon 1 & 2 yield initiatives steadily expanding Behring gross margins.", source: "Capital Markets Day Briefing", date: "Latest" }
+    ],
+    bearCase: [
+      { point: "Next-generation FcRn therapies pose long-term competitive pressure in specific autoimmune indications.", source: "Biotech Competitive Landscape", date: "2025–2026" },
+      { point: "Softer seasonal Northern Hemisphere influenza vaccination rates impacted Seqirus top-line growth.", source: "Half-Year Segment Results", date: "Latest Half" }
+    ],
+    news: [
+      { title: "CSL Behring Margin Recovery Remains On Track as Plasma Collection Costs Decline", source: "ASX Healthcare Insights (Demo)", date: "7h ago", summary: "New collection technology improves donor throughput across US centers.", url: "https://finance.yahoo.com/quote/CSL.AX" }
+    ],
+    history: {
+      "1D": [282.70, 283.40, 284.10, 285.00, 285.80, 286.40],
+      "1W": [279.50, 280.80, 281.90, 282.10, 282.70, 286.40],
+      "1M": [294.00, 289.50, 284.00, 280.20, 281.50, 282.70, 286.40],
+      "3M": [304.00, 298.50, 292.00, 285.00, 281.00, 283.50, 286.40],
+      "6M": [281.00, 288.00, 296.50, 308.00, 295.00, 284.00, 286.40],
+      "1Y": [272.00, 284.00, 279.50, 291.00, 305.00, 289.00, 286.40],
+      "5Y": [285.00, 275.00, 290.00, 282.00, 265.00, 292.00, 286.40]
+    }
+  },
+  "XRO.AX": {
+    ticker: "XRO.AX",
+    name: "Xero Limited",
+    exchange: "ASX",
+    country: "Australia",
+    currency: "AUD",
+    sector: "Cloud Accounting SaaS",
+    logoBg: "from-sky-400/20 to-cyan-500/20 text-sky-300 border-sky-400/30",
+    price: 168.50,
+    change: 4.25,
+    changePct: 2.59,
+    marketCap: 25700000000,
+    peRatio: 84.5,
+    high52: 173.40,
+    low52: 112.20,
+    volume: "620K",
+    revGrowth: 21.5,
+    netMargin: 12.4,
+    roe: 14.2,
+    dividendYield: 0.0,
+    isGrowthCandidate: true,
+    growthTheme: "Global SMB Cloud Accounting & Rule-of-40 SaaS",
+    growthCatalystSummary: "Over 4.2 million cloud subscribers with rising ARPU, US payments integration, and expanding free cash flow margins.",
+    description: "Xero provides cloud-based accounting, payroll, and small-business financial software across Australia, New Zealand, the United Kingdom, North America, and Singapore.",
+    movementSummary: {
+      headline: "Subscriber ARPU expansion and Rule-of-40 SaaS discipline drive strong operating leverage.",
+      confirmedFacts: [
+        "Operating revenue grew over 20% year-over-year while free cash flow margin expanded above 20% (ASX Half-Year Report).",
+        "Average revenue per user (ARPU) increased across ANZ and UK following plan tier enhancements.",
+        "Total subscribers surpassed 4.2 million globally with monthly churn remaining below 1%."
+      ],
+      possibleExplanations: [
+        "Global SaaS valuation re-rating as Xero demonstrates balanced growth and profitability.",
+        "Optimism around UK Making Tax Digital regulatory tailwinds."
+      ]
+    },
+    bullCase: [
+      { point: "Mission-critical accounting ledger creates sub-1% monthly churn and strong pricing power.", source: "Xero Investor Presentation (ASX)", date: "Latest Half" },
+      { point: "UK regulatory digitization and US embedded payments offer multi-year ARPU expansion.", source: "Management Strategy Update", date: "2025" }
+    ],
+    bearCase: [
+      { point: "Intuit QuickBooks holds entrenched scale and marketing spend in the US small-business market.", source: "North American SMB Software Benchmarks", date: "Ongoing" },
+      { point: "High earnings multiple (~84x) leaves limited margin of safety if subscriber net additions slow.", source: "ASX Tech Valuation Multiples", date: "Current" }
+    ],
+    news: [
+      { title: "Xero Delivers Rule-of-40 Milestone as Free Cash Flow Surges on Subscriber Pricing", source: "ANZ Tech & Markets (Demo)", date: "6h ago", summary: "Disciplined operating expense management boosts SaaS profitability alongside 21% revenue growth.", url: "https://finance.yahoo.com/quote/XRO.AX" }
+    ],
+    history: {
+      "1D": [164.25, 165.10, 166.00, 166.80, 167.90, 168.50],
+      "1W": [160.40, 161.80, 163.00, 163.90, 164.25, 168.50],
+      "1M": [151.00, 154.50, 158.00, 160.20, 162.80, 164.25, 168.50],
+      "3M": [138.00, 143.50, 147.00, 152.40, 158.00, 163.50, 168.50],
+      "6M": [126.00, 132.50, 136.00, 141.50, 149.00, 159.00, 168.50],
+      "1Y": [114.00, 122.00, 131.50, 128.00, 137.00, 152.00, 168.50],
+      "5Y": [82.00, 135.00, 142.00, 72.00, 108.00, 136.00, 168.50]
+    }
+  },
+  "FMG.AX": {
+    ticker: "FMG.AX",
+    name: "Fortescue Ltd",
+    exchange: "ASX",
+    country: "Australia",
+    currency: "AUD",
+    sector: "Iron Ore Mining & Green Energy",
+    logoBg: "from-emerald-500/20 to-lime-600/20 text-emerald-400 border-emerald-500/30",
+    price: 18.92,
+    change: -0.28,
+    changePct: -1.46,
+    marketCap: 58200000000,
+    peRatio: 7.9,
+    high52: 29.95,
+    low52: 16.52,
+    volume: "11.4M",
+    revGrowth: -2.1,
+    netMargin: 28.4,
+    roe: 27.1,
+    dividendYield: 8.65,
+    isGrowthCandidate: false,
+    growthTheme: "High-Yield Pilbara Iron Ore & Decarbonization",
+    growthCatalystSummary: "High dividend payout policy backed by Pilbara hematite operations and Iron Bridge magnetite ramp-up.",
+    description: "Fortescue is one of the world's largest iron ore producers operating integrated mine, rail, and port infrastructure in Western Australia's Pilbara region alongside green energy initiatives.",
+    movementSummary: {
+      headline: "Lower-grade iron ore price realizations and Iron Bridge ramp-up costs weigh on near-term sentiment.",
+      confirmedFacts: [
+        "Pilbara hematite C1 cash costs rose modestly due to inflationary strip-ratio pressures (ASX Quarterly Production Report).",
+        "Management recalibrated green hydrogen project timelines to prioritize capital discipline and return hurdles."
+      ],
+      possibleExplanations: [
+        "Wider price discounts for 58%-Fe iron ore grades relative to 62%-Fe benchmark prices.",
+        "Yield-focused investors weighing dividend sustainability against commodity price volatility."
+      ]
+    },
+    bullCase: [
+      { point: "Industry-leading dividend payout policy (50–80% of NPAT) delivers high fully franked yield.", source: "Fortescue Capital Allocation Policy", date: "Annual Report" },
+      { point: "More disciplined green energy capex reduces cash burn risk.", source: "ASX Strategy Update", date: "Latest Quarter" }
+    ],
+    bearCase: [
+      { point: "Single-commodity concentration in iron ore makes earnings highly volatile to Chinese steel demand.", source: "Segment Revenue Disclosure", date: "Annual Report" },
+      { point: "New global supply from Guinea's Simandou project could pressure long-term iron ore prices.", source: "Global Iron Ore Supply Forecast", date: "2025–2027" }
+    ],
+    news: [
+      { title: "Fortescue Tightens Capital Allocation on Energy Projects While Maintaining Pilbara Shipments", source: "Perth Mining Daily (Demo)", date: "9h ago", summary: "Focus shifts toward Pilbara fleet decarbonization and disciplined shareholder returns.", url: "https://finance.yahoo.com/quote/FMG.AX" }
+    ],
+    history: {
+      "1D": [19.20, 19.12, 19.05, 18.98, 18.95, 18.92],
+      "1W": [19.65, 19.50, 19.35, 19.28, 19.20, 18.92],
+      "1M": [20.40, 19.90, 19.50, 18.80, 19.10, 19.20, 18.92],
+      "3M": [19.20, 18.10, 17.40, 20.80, 19.90, 19.40, 18.92],
+      "6M": [24.80, 22.50, 20.90, 18.40, 19.80, 19.30, 18.92],
+      "1Y": [26.40, 28.90, 25.10, 24.40, 21.20, 19.50, 18.92],
+      "5Y": [12.50, 21.00, 19.50, 18.00, 23.50, 25.00, 18.92]
+    }
+  },
+  "MQG.AX": {
+    ticker: "MQG.AX",
+    name: "Macquarie Group Limited",
+    exchange: "ASX",
+    country: "Australia",
+    currency: "AUD",
+    sector: "Global Asset Management & Investment Banking",
+    logoBg: "from-slate-400/20 to-sky-500/20 text-slate-200 border-slate-400/30",
+    price: 228.60,
+    change: 2.40,
+    changePct: 1.06,
+    marketCap: 87400000000,
+    peRatio: 21.4,
+    high52: 234.80,
+    low52: 179.40,
+    volume: "740K",
+    revGrowth: 8.5,
+    netMargin: 22.1,
+    roe: 12.1,
+    dividendYield: 2.95,
+    isGrowthCandidate: true,
+    growthTheme: "Global Infrastructure & Energy Transition Capital",
+    growthCatalystSummary: "Over A$900B in assets under management plus rebounding M&A advisory and global commodities volatility.",
+    description: "Macquarie Group is a diversified global financial group operating across infrastructure asset management, retail banking, commodities & global markets, and investment banking.",
+    movementSummary: {
+      headline: "Rebounding global M&A deal flow and infrastructure asset realizations lift earnings outlook.",
+      confirmedFacts: [
+        "Macquarie Asset Management surpassed A$915B in assets under management with strong private credit and digital infrastructure inflows (ASX Release).",
+        "Macquarie Capital advisory fee revenue improved sequentially as global deal activity recovered."
+      ],
+      possibleExplanations: [
+        "Lower global interest rate expectations catalyzing private-market infrastructure exits and performance fees.",
+        "Continued market-share gains in Australian domestic mortgages via Macquarie's digital retail bank."
+      ]
+    },
+    bullCase: [
+      { point: "World's largest infrastructure asset manager positioned to capture data-center and grid transition capital.", source: "IPE Real Assets / MQG Filings", date: "2025" },
+      { point: "Diversified annuity-style and market-facing businesses smooth earnings across cycles.", source: "MQG Operational Briefing", date: "Latest" }
+    ],
+    bearCase: [
+      { point: "Commodities and Global Markets (CGM) trading profits normalize during calmer energy market periods.", source: "Segment Profit Disclosure", date: "Latest Half" },
+      { point: "Timing of green-energy asset realizations can create half-on-half earnings lumpiness.", source: "Management Guidance", date: "Latest Release" }
+    ],
+    news: [
+      { title: "Macquarie Asset Management Expands Digital Infrastructure & Data Center Credit Platform", source: "Global Capital & ASX News (Demo)", date: "5h ago", summary: "Institutional demand for AI power and fiber infrastructure drives new fund commitments.", url: "https://finance.yahoo.com/quote/MQG.AX" }
+    ],
+    history: {
+      "1D": [226.20, 226.90, 227.40, 227.80, 228.10, 228.60],
+      "1W": [222.50, 223.80, 224.90, 225.40, 226.20, 228.60],
+      "1M": [218.00, 221.00, 224.50, 223.00, 225.80, 226.20, 228.60],
+      "3M": [206.00, 211.50, 216.00, 219.40, 222.00, 225.00, 228.60],
+      "6M": [191.00, 198.00, 204.50, 212.00, 218.50, 224.00, 228.60],
+      "1Y": [182.00, 190.50, 196.00, 202.00, 214.00, 223.00, 228.60],
+      "5Y": [128.00, 155.00, 185.00, 172.00, 180.00, 205.00, 228.60]
+    }
+  }
+};
+
+// ============================================================================
+// 2. EXPANDED BUILT-IN DIRECTORY (US & ASX EQUITIES + 10,000+ FINNHUB SYNC)
+// ============================================================================
+const EXTENDED_CATALOG = [
+  { ticker: "TSLA", name: "Tesla, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "GOOGL", name: "Alphabet Inc. (Class A)", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "GOOG", name: "Alphabet Inc. (Class C)", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "META", name: "Meta Platforms, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "AMD", name: "Advanced Micro Devices, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "AVGO", name: "Broadcom Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "QCOM", name: "QUALCOMM Incorporated", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "INTC", name: "Intel Corporation", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "ARM", name: "Arm Holdings plc", exchange: "NASDAQ", country: "US", type: "ADR" },
+  { ticker: "TSM", name: "Taiwan Semiconductor Manufacturing Co.", exchange: "NYSE", country: "US", type: "ADR" },
+  { ticker: "ASML", name: "ASML Holding N.V.", exchange: "NASDAQ", country: "US", type: "ADR" },
+  { ticker: "MU", name: "Micron Technology, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "AMAT", name: "Applied Materials, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "LRCX", name: "Lam Research Corporation", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "KLAC", name: "KLA Corporation", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "MRVL", name: "Marvell Technology, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "SMCI", name: "Super Micro Computer, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "CRM", name: "Salesforce, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "ORCL", name: "Oracle Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "ADBE", name: "Adobe Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "NOW", name: "ServiceNow, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "INTU", name: "Intuit Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "SNOW", name: "Snowflake Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "DDOG", name: "Datadog, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "CRWD", name: "CrowdStrike Holdings, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "PANW", name: "Palo Alto Networks, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "ZS", name: "Zscaler, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "NET", name: "Cloudflare, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "MDB", name: "MongoDB, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "SHOP", name: "Shopify Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "UBER", name: "Uber Technologies, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "ABNB", name: "Airbnb, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "DASH", name: "DoorDash, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "NFLX", name: "Netflix, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "SPOT", name: "Spotify Technology S.A.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "RBLX", name: "Roblox Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "APP", name: "AppLovin Corporation", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "ANET", name: "Arista Networks, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "DELL", name: "Dell Technologies Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "HPE", name: "Hewlett Packard Enterprise Co.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "IBM", name: "International Business Machines", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "CSCO", name: "Cisco Systems, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "TXN", name: "Texas Instruments Incorporated", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "ADI", name: "Analog Devices, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "BRK.B", name: "Berkshire Hathaway Inc. (Class B)", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "JPM", name: "JPMorgan Chase & Co.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "BAC", name: "Bank of America Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "WFC", name: "Wells Fargo & Company", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "C", name: "Citigroup Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "GS", name: "The Goldman Sachs Group, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "MS", name: "Morgan Stanley", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "BLK", name: "BlackRock, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "SCHW", name: "The Charles Schwab Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "V", name: "Visa Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "MA", name: "Mastercard Incorporated", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "AXP", name: "American Express Company", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "PYPL", name: "PayPal Holdings, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "XYZ", name: "Block, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "COIN", name: "Coinbase Global, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "HOOD", name: "Robinhood Markets, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "SOFI", name: "SoFi Technologies, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "NU", name: "Nu Holdings Ltd.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "SPGI", name: "S&P Global Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "MCO", name: "Moody's Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "WMT", name: "Walmart Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "COST", name: "Costco Wholesale Corporation", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "HD", name: "The Home Depot, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "LOW", name: "Lowe's Companies, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "TGT", name: "Target Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "MCD", name: "McDonald's Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "SBUX", name: "Starbucks Corporation", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "CMG", name: "Chipotle Mexican Grill, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "NKE", name: "NIKE, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "LULU", name: "lululemon athletica inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "PG", name: "The Procter & Gamble Company", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "KO", name: "The Coca-Cola Company", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "PEP", name: "PepsiCo, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "DIS", name: "The Walt Disney Company", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "BKNG", name: "Booking Holdings Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "MAR", name: "Marriott International, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "RCL", name: "Royal Caribbean Cruises Ltd.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "UNH", name: "UnitedHealth Group Incorporated", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "JNJ", name: "Johnson & Johnson", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "ABBV", name: "AbbVie Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "MRK", name: "Merck & Co., Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "PFE", name: "Pfizer Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "TMO", name: "Thermo Fisher Scientific Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "ABT", name: "Abbott Laboratories", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "DHR", name: "Danaher Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "ISRG", name: "Intuitive Surgical, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "AMGN", name: "Amgen Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "GILD", name: "Gilead Sciences, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "VRTX", name: "Vertex Pharmaceuticals Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "REGN", name: "Regeneron Pharmaceuticals, Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "NVO", name: "Novo Nordisk A/S", exchange: "NYSE", country: "US", type: "ADR" },
+  { ticker: "GE", name: "GE Aerospace", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "CAT", name: "Caterpillar Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "BA", name: "The Boeing Company", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "RTX", name: "RTX Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "LMT", name: "Lockheed Martin Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "HON", name: "Honeywell International Inc.", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "UNP", name: "Union Pacific Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "UPS", name: "United Parcel Service, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "DE", name: "Deere & Company", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "ETN", name: "Eaton Corporation plc", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "VRT", name: "Vertiv Holdings Co", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "GEV", name: "GE Vernova Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "CEG", name: "Constellation Energy Corporation", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "VST", name: "Vistra Corp.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "NEE", name: "NextEra Energy, Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "XOM", name: "Exxon Mobil Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "CVX", name: "Chevron Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "COP", name: "ConocoPhillips", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "SLB", name: "SLB (Schlumberger)", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "FCX", name: "Freeport-McMoRan Inc.", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "NEM", name: "Newmont Corporation", exchange: "NYSE", country: "US", type: "Common Stock" },
+  { ticker: "LIN", name: "Linde plc", exchange: "NASDAQ", country: "US", type: "Common Stock" },
+  { ticker: "SPY", name: "SPDR S&P 500 ETF Trust", exchange: "NYSE Arca", country: "US", type: "ETF" },
+  { ticker: "QQQ", name: "Invesco QQQ Trust (Nasdaq-100)", exchange: "NASDAQ", country: "US", type: "ETF" },
+  { ticker: "VOO", name: "Vanguard S&P 500 ETF", exchange: "NYSE Arca", country: "US", type: "ETF" },
+  { ticker: "VTI", name: "Vanguard Total Stock Market ETF", exchange: "NYSE Arca", country: "US", type: "ETF" },
+  { ticker: "IWM", name: "iShares Russell 2000 ETF", exchange: "NYSE Arca", country: "US", type: "ETF" },
+  { ticker: "SMH", name: "VanEck Semiconductor ETF", exchange: "NASDAQ", country: "US", type: "ETF" },
+  { ticker: "RIO.AX", name: "Rio Tinto Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "NAB.AX", name: "National Australia Bank Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "WBC.AX", name: "Westpac Banking Corporation", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "ANZ.AX", name: "ANZ Group Holdings Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "WES.AX", name: "Wesfarmers Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "WOW.AX", name: "Woolworths Group Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "COL.AX", name: "Coles Group Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "WDS.AX", name: "Woodside Energy Group Ltd", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "STO.AX", name: "Santos Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "TLS.AX", name: "Telstra Group Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "TCL.AX", name: "Transurban Group", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "GMG.AX", name: "Goodman Group", exchange: "ASX", country: "AU", type: "REIT" },
+  { ticker: "WTC.AX", name: "WiseTech Global Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "REA.AX", name: "REA Group Ltd", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "CAR.AX", name: "CAR Group Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "SEK.AX", name: "SEEK Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "NXT.AX", name: "NEXTDC Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "PME.AX", name: "Pro Medicus Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "COH.AX", name: "Cochlear Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "RMD.AX", name: "ResMed Inc. (CDI)", exchange: "ASX", country: "AU", type: "CDI" },
+  { ticker: "FPH.AX", name: "Fisher & Paykel Healthcare", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "SHL.AX", name: "Sonic Healthcare Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "ALL.AX", name: "Aristocrat Leisure Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "QAN.AX", name: "Qantas Airways Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "BXB.AX", name: "Brambles Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "JHX.AX", name: "James Hardie Industries plc", exchange: "ASX", country: "AU", type: "CDI" },
+  { ticker: "S32.AX", name: "South32 Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "MIN.AX", name: "Mineral Resources Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "PLS.AX", name: "Pilbara Minerals Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "NST.AX", name: "Northern Star Resources Ltd", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "EVN.AX", name: "Evolution Mining Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "SUN.AX", name: "Suncorp Group Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "IAG.AX", name: "Insurance Australia Group", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "QBE.AX", name: "QBE Insurance Group Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "CPU.AX", name: "Computershare Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "APA.AX", name: "APA Group", exchange: "ASX", country: "AU", type: "Stapled Security" },
+  { ticker: "ORG.AX", name: "Origin Energy Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "AGL.AX", name: "AGL Energy Limited", exchange: "ASX", country: "AU", type: "Common Stock" },
+  { ticker: "VAS.AX", name: "Vanguard Australian Shares ETF", exchange: "ASX", country: "AU", type: "ETF" },
+  { ticker: "VGS.AX", name: "Vanguard MSCI Index International ETF", exchange: "ASX", country: "AU", type: "ETF" },
+  { ticker: "IVV.AX", name: "iShares S&P 500 ETF (ASX)", exchange: "ASX", country: "AU", type: "ETF" },
+  { ticker: "NDQ.AX", name: "Betashares Nasdaq 100 ETF", exchange: "ASX", country: "AU", type: "ETF" }
+];
+
+// ============================================================================
+// 3. APPLICATION STATE, 10,000+ SYMBOL INDEX, CACHING & STREAMING ENGINE
+// ============================================================================
+const STATE = {
+  route: 'home',
+  activeTicker: 'NVDA',
+  activeRange: '3M',
+  growthMarketFilter: 'ALL',
+  growthThemeFilter: 'ALL',
+  compareTickers: ['NVDA', 'MSFT', 'AAPL'],
+  watchlist: JSON.parse(localStorage.getItem('marketwhy_watchlist') || '["NVDA","MSFT","BHP.AX","CBA.AX"]'),
+  recentlyViewed: JSON.parse(localStorage.getItem('marketwhy_recent') || '["NVDA","MSFT","BHP.AX","XRO.AX"]'),
+  searchHistory: JSON.parse(localStorage.getItem('marketwhy_search_history') || '["NVDA","TSLA","BHP.AX","AAPL"]'),
+  finnhubKey: localStorage.getItem('marketwhy_finnhub_key') || DEFAULT_FINNHUB_KEY || '',
+  liveUpdatesEnabled: true,
+  liveStocksCache: {},
+  symbolUniverse: [],
+  apiCache: new Map(),
+  callTimestamps: [],
+  chartInstance: null,
+  compareChartInstance: null,
+  ws: null,
+  wsSubscribed: new Set(),
+  pollTimer: null,
+  lastTickDir: {}
+};
+
+function initSymbolUniverse() {
+  const map = new Map();
+  Object.values(DEMO_STOCKS).forEach(s => {
+    map.set(s.ticker.toUpperCase(), {
+      ticker: s.ticker.toUpperCase(),
+      name: s.name,
+      exchange: s.exchange,
+      country: s.country === 'Australia' ? 'AU' : 'US',
+      type: 'Common Stock',
+      hasDeepReport: true
+    });
+  });
+  EXTENDED_CATALOG.forEach(item => {
+    const key = item.ticker.toUpperCase();
+    if (!map.has(key)) {
+      map.set(key, { ...item, ticker: key, hasDeepReport: false });
+    }
+  });
+
+  try {
+    const cachedDir = localStorage.getItem('marketwhy_us_directory_v1');
+    const cachedAt = Number(localStorage.getItem('marketwhy_us_directory_ts') || 0);
+    if (cachedDir && (Date.now() - cachedAt < 7 * 24 * 60 * 60 * 1000)) {
+      const parsed = JSON.parse(cachedDir);
+      parsed.forEach(item => {
+        if (!map.has(item.t)) {
+          map.set(item.t, {
+            ticker: item.t,
+            name: item.n,
+            exchange: item.e || 'US',
+            country: 'US',
+            type: item.y || 'Common Stock',
+            hasDeepReport: false
+          });
+        }
+      });
+    }
+  } catch (e) {}
+
+  STATE.symbolUniverse = Array.from(map.values());
+  updateUniverseBadge();
+}
+
+function updateUniverseBadge() {
+  const badge = document.getElementById('universe-count-badge');
+  if (!badge) return;
+  const count = STATE.symbolUniverse.length;
+  badge.textContent = count >= 1000 ? `${count.toLocaleString()} stocks` : `${count}+ indexed + live`;
+}
+
+async function syncFullUsSymbolUniverse() {
+  if (!STATE.finnhubKey) return;
+  try {
+    const cachedAt = Number(localStorage.getItem('marketwhy_us_directory_ts') || 0);
+    if (STATE.symbolUniverse.length > 5000 && (Date.now() - cachedAt < 24 * 60 * 60 * 1000)) {
+      return;
+    }
+    const url = `https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${encodeURIComponent(STATE.finnhubKey)}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    const map = new Map();
+    STATE.symbolUniverse.forEach(item => map.set(item.ticker, item));
+
+    const compactForStorage = [];
+    data.forEach(raw => {
+      if (!raw.symbol || !raw.description) return;
+      const sym = raw.symbol.toUpperCase();
+      const desc = raw.description.trim();
+      const exch = raw.mic === 'XNAS' ? 'NASDAQ' : raw.mic === 'XNYS' ? 'NYSE' : (raw.mic || 'US');
+      const typ = raw.type || 'Common Stock';
+      if (!map.has(sym)) {
+        map.set(sym, {
+          ticker: sym,
+          name: desc,
+          exchange: exch,
+          country: 'US',
+          type: typ,
+          hasDeepReport: false
+        });
+      }
+      compactForStorage.push({ t: sym, n: desc, e: exch, y: typ });
+    });
+
+    STATE.symbolUniverse = Array.from(map.values());
+    updateUniverseBadge();
+
+    try {
+      localStorage.setItem('marketwhy_us_directory_v1', JSON.stringify(compactForStorage.slice(0, 14000)));
+      localStorage.setItem('marketwhy_us_directory_ts', String(Date.now()));
+    } catch (storageErr) {}
+  } catch (err) {
+    console.warn('Symbol universe sync skipped:', err);
+  }
+}
+
+// ============================================================================
+// 4. FORMATTERS & HELPERS
+// ============================================================================
+function fmtPrice(val, currency = 'USD') {
+  if (val === null || val === undefined || isNaN(val)) return 'N/A';
+  const sym = currency === 'AUD' ? 'A$' : '$';
+  return `${sym}${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function fmtMarketCap(val, currency = 'USD') {
+  if (!val || isNaN(val)) return 'N/A';
+  const sym = currency === 'AUD' ? 'A$' : '$';
+  if (val >= 1e12) return `${sym}${(val / 1e12).toFixed(2)}T`;
+  if (val >= 1e9) return `${sym}${(val / 1e9).toFixed(1)}B`;
+  if (val >= 1e6) return `${sym}${(val / 1e6).toFixed(0)}M`;
+  return `${sym}${val.toLocaleString()}`;
+}
+
+function fmtChange(change, pct, currency = 'USD') {
+  if (change === null || change === undefined || isNaN(change)) {
+    return `<span class="text-slate-400">N/A</span>`;
+  }
+  const isPos = change >= 0;
+  const color = isPos ? 'text-emerald-400' : 'text-rose-400';
+  const sign = isPos ? '+' : '';
+  const sym = currency === 'AUD' ? 'A$' : '$';
+  return `<span class="${color} font-mono tabular-nums">${sign}${sym}${Math.abs(change).toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>`;
+}
+
+function fmtBadgePct(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) {
+    return `<span class="px-2 py-0.5 rounded text-xs font-mono bg-slate-800 text-slate-400">N/A</span>`;
+  }
+  const isPos = pct >= 0;
+  const cls = isPos
+    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+    : 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+  return `<span class="px-2 py-0.5 rounded border text-xs font-mono tabular-nums ${cls}">${isPos ? '+' : ''}${pct.toFixed(2)}%</span>`;
+}
+
+function savePersistence() {
+  localStorage.setItem('marketwhy_watchlist', JSON.stringify(STATE.watchlist));
+  localStorage.setItem('marketwhy_recent', JSON.stringify(STATE.recentlyViewed));
+  localStorage.setItem('marketwhy_search_history', JSON.stringify(STATE.searchHistory));
+  updateWatchlistCount();
+  renderQuickTape();
+}
+
+function updateWatchlistCount() {
+  const el = document.getElementById('nav-watchlist-count');
+  if (el) el.textContent = STATE.watchlist.length;
+}
+
+function updateTimestampClock() {
+  const el = document.getElementById('last-updated-label');
+  if (el) {
+    const now = new Date();
+    el.textContent = `Updated: ${now.toLocaleTimeString()}`;
+  }
+}
+
+function getStockRecord(ticker) {
+  const t = ticker.toUpperCase();
+  return STATE.liveStocksCache[t] || DEMO_STOCKS[t] || null;
+}
+
+// ============================================================================
+// 5. FINNHUB REST + WEBSOCKET STREAMING + RATE-LIMIT ENGINE
+// ============================================================================
+function canMakeApiCall() {
+  const now = Date.now();
+  STATE.callTimestamps = STATE.callTimestamps.filter(ts => now - ts < 60000);
+  if (STATE.callTimestamps.length >= 50) return false;
+  STATE.callTimestamps.push(now);
+  return true;
+}
+
+async function finnhubGet(endpoint, params = {}, ttlMs = 30000) {
+  if (!STATE.finnhubKey) throw new Error('NO_API_KEY');
+  const query = new URLSearchParams({ ...params, token: STATE.finnhubKey }).toString();
+  const cacheKey = `${endpoint}?${JSON.stringify(params)}`;
+  const cached = STATE.apiCache.get(cacheKey);
+  if (cached && (Date.now() - cached.ts < ttlMs)) {
+    return cached.data;
+  }
+  if (!canMakeApiCall()) {
+    throw new Error('RATE_LIMIT_GUARD');
+  }
+  const url = `https://finnhub.io/api/v1${endpoint}?${query}`;
+  const res = await fetch(url);
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('ENDPOINT_RESTRICTED_OR_INVALID_KEY');
+  }
+  if (res.status === 429) {
+    throw new Error('FINNHUB_RATE_LIMIT');
+  }
+  if (!res.ok) {
+    throw new Error(`HTTP_${res.status}`);
+  }
+  const data = await res.json();
+  if (data && data.error) {
+    throw new Error(data.error);
+  }
+  STATE.apiCache.set(cacheKey, { ts: Date.now(), data });
+  return data;
+}
+
+function initWebSocketStream() {
+  if (!STATE.finnhubKey || !STATE.liveUpdatesEnabled) {
+    closeWebSocketStream();
+    return;
+  }
+  if (STATE.ws && (STATE.ws.readyState === WebSocket.OPEN || STATE.ws.readyState === WebSocket.CONNECTING)) {
+    syncWebSocketSubscriptions();
+    return;
+  }
+  try {
+    STATE.ws = new WebSocket(`wss://ws.finnhub.io?token=${encodeURIComponent(STATE.finnhubKey)}`);
+    STATE.ws.onopen = () => {
+      STATE.wsSubscribed.clear();
+      syncWebSocketSubscriptions();
+      updateStreamStatusUI(true);
+    };
+    STATE.ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'trade' && Array.isArray(msg.data)) {
+          msg.data.forEach(trade => {
+            handleIncomingTradeTick(trade.s, trade.p, trade.t);
+          });
+        }
+      } catch (e) {}
+    };
+    STATE.ws.onclose = () => {
+      STATE.wsSubscribed.clear();
+      updateStreamStatusUI(false);
+    };
+    STATE.ws.onerror = () => {
+      updateStreamStatusUI(false);
+    };
+  } catch (e) {
+    updateStreamStatusUI(false);
+  }
+}
+
+function closeWebSocketStream() {
+  if (STATE.ws) {
+    try { STATE.ws.close(); } catch (e) {}
+    STATE.ws = null;
+  }
+  STATE.wsSubscribed.clear();
+  updateStreamStatusUI(false);
+}
+
+function syncWebSocketSubscriptions() {
+  if (!STATE.ws || STATE.ws.readyState !== WebSocket.OPEN) return;
+  const desired = new Set();
+  if (STATE.activeTicker && !STATE.activeTicker.endsWith('.AX')) {
+    desired.add(STATE.activeTicker);
+  }
+  STATE.watchlist.forEach(t => {
+    if (!t.endsWith('.AX')) desired.add(t);
+  });
+
+  STATE.wsSubscribed.forEach(sym => {
+    if (!desired.has(sym)) {
+      STATE.ws.send(JSON.stringify({ type: 'unsubscribe', symbol: sym }));
+      STATE.wsSubscribed.delete(sym);
+    }
+  });
+  desired.forEach(sym => {
+    if (!STATE.wsSubscribed.has(sym)) {
+      STATE.ws.send(JSON.stringify({ type: 'subscribe', symbol: sym }));
+      STATE.wsSubscribed.add(sym);
+    }
+  });
+}
+
+function handleIncomingTradeTick(symbol, tradePrice, timestamp) {
+  if (!symbol || !tradePrice) return;
+  const stock = getStockRecord(symbol);
+  if (!stock || typeof stock.price !== 'number') return;
+
+  const prevPrice = stock.price;
+  if (prevPrice === tradePrice) return;
+
+  const prevClose = prevPrice - (stock.change || 0);
+  stock.price = tradePrice;
+  if (prevClose > 0) {
+    stock.change = tradePrice - prevClose;
+    stock.changePct = ((tradePrice - prevClose) / prevClose) * 100;
+  }
+  stock.isLive = true;
+  STATE.lastTickDir[symbol] = tradePrice > prevPrice ? 'up' : 'down';
+
+  if (stock.history && Array.isArray(stock.history['1D'])) {
+    const arr = stock.history['1D'];
+    if (arr.length > 40) arr.shift();
+    arr.push(tradePrice);
+  }
+
+  updateTimestampClock();
+  patchLiveDomPrices(symbol, stock, STATE.lastTickDir[symbol]);
+}
+
+function patchLiveDomPrices(symbol, stock, dir) {
+  const flashClass = dir === 'up' ? 'tick-up' : 'tick-down';
+  document.querySelectorAll(`[data-live-price="${symbol}"]`).forEach(el => {
+    el.textContent = fmtPrice(stock.price, stock.currency);
+    el.classList.remove('tick-up', 'tick-down');
+    void el.offsetWidth;
+    el.classList.add(flashClass);
+  });
+  document.querySelectorAll(`[data-live-change="${symbol}"]`).forEach(el => {
+    el.innerHTML = fmtChange(stock.change, stock.changePct, stock.currency);
+  });
+  document.querySelectorAll(`[data-live-badge="${symbol}"]`).forEach(el => {
+    el.innerHTML = fmtBadgePct(stock.changePct);
+  });
+}
+
+function startRestPolling() {
+  if (STATE.pollTimer) clearInterval(STATE.pollTimer);
+  STATE.pollTimer = setInterval(async () => {
+    if (!STATE.finnhubKey || !STATE.liveUpdatesEnabled) return;
+    const targets = new Set([STATE.activeTicker, ...STATE.watchlist.slice(0, 6)]);
+    for (const sym of targets) {
+      if (!sym || sym.endsWith('.AX')) continue;
+      try {
+        const q = await finnhubGet('/quote', { symbol: sym }, 12000);
+        if (q && q.c && q.c > 0) {
+          const existing = getStockRecord(sym);
+          if (existing) {
+            const dir = q.c >= (existing.price || q.c) ? 'up' : 'down';
+            existing.price = q.c;
+            existing.change = q.d;
+            existing.changePct = q.dp;
+            existing.isLive = true;
+            patchLiveDomPrices(sym, existing, dir);
+          }
+        }
+      } catch (e) {}
+    }
+    updateTimestampClock();
+  }, 15000);
+}
+
+function toggleLiveUpdates() {
+  STATE.liveUpdatesEnabled = !STATE.liveUpdatesEnabled;
+  const btn = document.getElementById('toggle-live-updates-btn');
+  if (btn) {
+    btn.textContent = STATE.liveUpdatesEnabled ? 'Live Updates: ON' : 'Live Updates: PAUSED';
+    btn.className = STATE.liveUpdatesEnabled
+      ? 'px-2.5 py-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-medium transition text-[11px]'
+      : 'px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 font-medium transition text-[11px]';
+  }
+  if (STATE.liveUpdatesEnabled) {
+    initWebSocketStream();
+    startRestPolling();
+  } else {
+    closeWebSocketStream();
+    if (STATE.pollTimer) clearInterval(STATE.pollTimer);
+  }
+}
+
+function updateStreamStatusUI(wsConnected) {
+  const pill = document.getElementById('stream-status-pill');
+  const txt = document.getElementById('stream-status-text');
+  if (!pill || !txt) return;
+  if (!STATE.finnhubKey) {
+    pill.classList.add('hidden');
+    return;
+  }
+  pill.classList.remove('hidden');
+  txt.textContent = wsConnected
+    ? 'Live WebSocket + 15s Poll Active'
+    : 'Live 15s REST Auto-Refresh Active';
+}
+
+// ============================================================================
+// 6. FULL STOCK RESEARCH HYDRATION (LIVE FINNHUB + FALLBACK)
+// ============================================================================
+async function loadLiveStockData(ticker) {
+  const cleanTicker = ticker.toUpperCase().trim();
+  const baseDemo = DEMO_STOCKS[cleanTicker];
+
+  if (!STATE.finnhubKey) {
+    return baseDemo || buildUnavailableShell(cleanTicker, 'Connect a Finnhub API key to load live quotes, financials, and news for tickers outside the 12 curated demo reports.');
+  }
+
+  const errors = [];
+  let quote = null, profile = null, metrics = null, news = [], candles = null, earnings = null, recs = null;
+
+  const [qRes, pRes, mRes, nRes, eRes, rRes] = await Promise.allSettled([
+    finnhubGet('/quote', { symbol: cleanTicker }, 15000),
+    finnhubGet('/stock/profile2', { symbol: cleanTicker }, 3600000),
+    finnhubGet('/stock/metric', { symbol: cleanTicker, metric: 'all' }, 300000),
+    finnhubGet('/company-news', {
+      symbol: cleanTicker,
+      from: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0],
+      to: new Date().toISOString().split('T')[0]
+    }, 120000),
+    finnhubGet('/stock/earnings', { symbol: cleanTicker, limit: 2 }, 3600000),
+    finnhubGet('/stock/recommendation', { symbol: cleanTicker }, 3600000)
+  ]);
+
+  if (qRes.status === 'fulfilled' && qRes.value && qRes.value.c > 0) quote = qRes.value;
+  else errors.push('Live quote unavailable for this exchange/symbol on current Finnhub plan.');
+
+  if (pRes.status === 'fulfilled' && pRes.value && pRes.value.name) profile = pRes.value;
+  else if (!baseDemo) errors.push('Company profile restricted or unavailable for non-US ticker.');
+
+  if (mRes.status === 'fulfilled' && mRes.value && mRes.value.metric) metrics = mRes.value.metric;
+  if (nRes.status === 'fulfilled' && Array.isArray(nRes.value)) news = nRes.value.slice(0, 6);
+  if (eRes.status === 'fulfilled' && Array.isArray(eRes.value)) earnings = eRes.value;
+  if (rRes.status === 'fulfilled' && Array.isArray(rRes.value)) recs = rRes.value;
+
+  try {
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - 90 * 86400;
+    const cData = await finnhubGet('/stock/candle', { symbol: cleanTicker, resolution: 'D', from, to }, 300000);
+    if (cData && cData.s === 'ok' && Array.isArray(cData.c)) {
+      candles = cData.c;
+    } else {
+      errors.push('Historical price candles restricted on Finnhub free tier.');
+    }
+  } catch (e) {
+    errors.push('Historical price candles restricted on Finnhub free tier (paid endpoint).');
+  }
+
+  const dirEntry = STATE.symbolUniverse.find(x => x.ticker === cleanTicker);
+
+  const merged = {
+    ticker: cleanTicker,
+    name: profile?.name || baseDemo?.name || dirEntry?.name || cleanTicker,
+    exchange: profile?.exchange || baseDemo?.exchange || dirEntry?.exchange || (cleanTicker.endsWith('.AX') ? 'ASX' : 'US Exchange'),
+    country: profile?.country || baseDemo?.country || (cleanTicker.endsWith('.AX') ? 'Australia' : 'United States'),
+    currency: profile?.currency || baseDemo?.currency || (cleanTicker.endsWith('.AX') ? 'AUD' : 'USD'),
+    sector: profile?.finnhubIndustry || baseDemo?.sector || dirEntry?.type || 'Equities',
+    logoUrl: profile?.logo || null,
+    logoBg: baseDemo?.logoBg || 'from-sky-500/20 to-indigo-600/20 text-sky-400 border-sky-500/30',
+    price: quote ? quote.c : (baseDemo?.price ?? null),
+    change: quote ? quote.d : (baseDemo?.change ?? null),
+    changePct: quote ? quote.dp : (baseDemo?.changePct ?? null),
+    marketCap: profile?.marketCapitalization ? profile.marketCapitalization * 1e6 : (baseDemo?.marketCap ?? null),
+    peRatio: metrics?.peBasicExclExtraTTM || metrics?.peTTM || baseDemo?.peRatio || null,
+    high52: metrics?.['52WeekHigh'] || baseDemo?.high52 || null,
+    low52: metrics?.['52WeekLow'] || baseDemo?.low52 || null,
+    volume: baseDemo?.volume || 'N/A (Quote Feed)',
+    revGrowth: metrics?.revenueGrowthTTMYoy ?? baseDemo?.revGrowth ?? null,
+    netMargin: metrics?.netProfitMarginTTM ?? baseDemo?.netMargin ?? null,
+    roe: metrics?.roeTTM ?? baseDemo?.roe ?? null,
+    dividendYield: metrics?.dividendYieldIndicatedAnnual ?? baseDemo?.dividendYield ?? null,
+    description: baseDemo?.description || (profile?.name
+      ? `${profile.name} (${cleanTicker}) is listed on ${profile.exchange || 'a public exchange'} operating within the ${profile.finnhubIndustry || 'general'} sector.`
+      : `${dirEntry?.name || cleanTicker} (${cleanTicker}) is listed on ${dirEntry?.exchange || 'a public exchange'}.`),
+    movementSummary: baseDemo?.movementSummary || buildDynamicMovementAnalysis(cleanTicker, profile, quote, metrics, news, earnings, recs),
+    bullCase: baseDemo?.bullCase || buildDynamicBullCase(cleanTicker, metrics, recs),
+    bearCase: baseDemo?.bearCase || buildDynamicBearCase(cleanTicker, metrics),
+    news: news.length > 0
+      ? news.map(n => ({
+          title: n.headline,
+          source: n.source,
+          date: new Date(n.datetime * 1000).toLocaleDateString(),
+          summary: n.summary || 'Open original source article for full coverage.',
+          url: n.url
+        }))
+      : (baseDemo?.news || []),
+    history: candles
+      ? { "1D": candles.slice(-8), "1W": candles.slice(-7), "1M": candles.slice(-22), "3M": candles, "6M": candles, "1Y": candles, "5Y": candles }
+      : (baseDemo?.history || null),
+    isLive: Boolean(quote),
+    isHybridDemo: Boolean(baseDemo),
+    apiNotices: errors
+  };
+
+  STATE.liveStocksCache[cleanTicker] = merged;
+  updateTimestampClock();
+  return merged;
+}
+
+function buildUnavailableShell(ticker, reason) {
+  const dirEntry = STATE.symbolUniverse.find(x => x.ticker === ticker);
+  return {
+    ticker,
+    name: dirEntry?.name || `${ticker} (Live Feed Not Connected)`,
+    exchange: dirEntry?.exchange || (ticker.endsWith('.AX') ? 'ASX' : 'US / Global'),
+    country: ticker.endsWith('.AX') ? 'Australia' : 'United States',
+    currency: ticker.endsWith('.AX') ? 'AUD' : 'USD',
+    sector: dirEntry?.type || 'Unloaded Symbol',
+    logoBg: 'from-slate-700/30 to-slate-800/30 text-slate-300 border-slate-600/40',
+    price: null, change: null, changePct: null, marketCap: null, peRatio: null,
+    high52: null, low52: null, volume: 'N/A', revGrowth: null, netMargin: null,
+    roe: null, dividendYield: null,
+    description: `${dirEntry?.name || ticker} is indexed in MarketWhy's 10,000+ stock directory. ${reason}`,
+    movementSummary: {
+      headline: 'Live market data required to analyze real-time price drivers for this ticker.',
+      confirmedFacts: ['No live Finnhub API key is configured, and this ticker is outside the 12 pre-loaded demo research briefs.'],
+      possibleExplanations: ['Click "Configure Live Finnhub API" in the top bar to stream real-time quotes, fundamentals, earnings surprises, and news for this symbol.']
+    },
+    bullCase: [{ point: 'Connect Finnhub API to inspect live revenue growth, profit margins, and analyst consensus.', source: 'System Notice', date: 'Now' }],
+    bearCase: [{ point: 'Live valuation multiples and risk metrics are currently unavailable without an active data feed.', source: 'System Notice', date: 'Now' }],
+    news: [],
+    history: null,
+    isLive: false,
+    apiNotices: [reason]
+  };
+}
+
+function buildDynamicMovementAnalysis(ticker, profile, quote, metrics, news, earnings, recs) {
+  const facts = [];
+  if (quote && quote.c) {
+    facts.push(`Latest traded price is $${quote.c.toFixed(2)} (${quote.dp >= 0 ? '+' : ''}${quote.dp?.toFixed(2)}%) versus previous close of $${quote.pc?.toFixed(2)}.`);
+  }
+  if (earnings && earnings.length > 0 && earnings[0].actual !== null) {
+    const e = earnings[0];
+    const beat = e.actual >= e.estimate ? 'beat' : 'missed';
+    facts.push(`Most recent quarterly EPS of $${e.actual} ${beat} consensus estimate of $${e.estimate} (Period: ${e.period}).`);
+  }
+  if (metrics?.revenueGrowthTTMYoy !== undefined && metrics?.revenueGrowthTTMYoy !== null) {
+    facts.push(`Trailing 12-month revenue growth stands at ${Number(metrics.revenueGrowthTTMYoy).toFixed(1)}% YoY.`);
+  }
+  if (recs && recs.length > 0) {
+    const r = recs[0];
+    facts.push(`Analyst consensus breakdown (${r.period}): ${r.strongBuy + r.buy} Buy, ${r.hold} Hold, ${r.sell + r.strongSell} Sell.`);
+  }
+  if (news && news.length > 0) {
+    facts.push(`Recent news flow includes: "${news[0].headline}" (${news[0].source}).`);
+  }
+  if (facts.length === 0) {
+    facts.push(`Limited fundamental telemetry returned for ${ticker} on the current API tier.`);
+  }
+
+  return {
+    headline: news && news.length > 0
+      ? `Market activity coincides with recent coverage: ${news[0].headline}`
+      : `Live quote telemetry loaded for ${profile?.name || ticker}.`,
+    confirmedFacts: facts,
+    possibleExplanations: [
+      'Intraday price fluctuations reflect live order flow, sector ETF correlations, and broader index sentiment.',
+      'Review the Company News feed below to verify whether an earnings release, analyst rating change, or macro catalyst occurred.'
+    ]
+  };
+}
+
+function buildDynamicBullCase(ticker, metrics, recs) {
+  const list = [];
+  if (metrics?.revenueGrowthTTMYoy > 10) {
+    list.push({ point: `Healthy trailing top-line expansion of ${metrics.revenueGrowthTTMYoy.toFixed(1)}% YoY.`, source: 'Finnhub Financial Metrics', date: 'TTM' });
+  }
+  if (metrics?.netProfitMarginTTM > 15) {
+    list.push({ point: `Strong bottom-line profitability with ${metrics.netProfitMarginTTM.toFixed(1)}% net profit margin.`, source: 'Finnhub Financial Metrics', date: 'TTM' });
+  }
+  if (recs && recs.length > 0 && (recs[0].strongBuy + recs[0].buy) > recs[0].hold) {
+    list.push({ point: `Favorable Wall Street analyst skew (${recs[0].strongBuy + recs[0].buy} Buy ratings vs. ${recs[0].sell + recs[0].strongSell} Sell).`, source: 'Finnhub Analyst Consensus', date: recs[0].period });
+  }
+  if (list.length === 0) {
+    list.push({ point: 'Evaluate competitive positioning, revenue durability, and balance sheet liquidity in primary filings.', source: 'Standard Research Framework', date: 'Current' });
+  }
+  return list;
+}
+
+function buildDynamicBearCase(ticker, metrics) {
+  const list = [];
+  if (metrics?.peTTM > 35) {
+    list.push({ point: `Elevated trailing P/E multiple (${metrics.peTTM.toFixed(1)}x) increases sensitivity to growth slowdowns.`, source: 'Finnhub Valuation Metrics', date: 'TTM' });
+  }
+  list.push({ point: 'Macroeconomic rate shifts, sector competition, and margin compression remain key equity risks.', source: 'Standard Risk Framework', date: 'Ongoing' });
+  return list;
+}
+
+// ============================================================================
+// 7. UNIVERSAL 10,000+ STOCK SEARCH & RELEVANCE RANKING ENGINE
+// ============================================================================
+let liveLookupTimer = null;
+
+function rankTopResults(query) {
+  const q = query.trim().toUpperCase();
+  if (!q) return [];
+
+  const exactTicker = [];
+  const prefixTicker = [];
+  const nameStartsWith = [];
+  const wordMatch = [];
+  const substringMatch = [];
+
+  for (let i = 0; i < STATE.symbolUniverse.length; i++) {
+    const item = STATE.symbolUniverse[i];
+    const t = item.ticker;
+    const n = item.name.toUpperCase();
+    const e = item.exchange.toUpperCase();
+
+    if (t === q) {
+      exactTicker.push(item);
+    } else if (t.startsWith(q)) {
+      prefixTicker.push(item);
+    } else if (n.startsWith(q)) {
+      nameStartsWith.push(item);
+    } else if (n.includes(' ' + q) || e === q) {
+      wordMatch.push(item);
+    } else if (t.includes(q) || n.includes(q) || e.includes(q)) {
+      substringMatch.push(item);
+    }
+
+    if (exactTicker.length + prefixTicker.length + nameStartsWith.length > 40) break;
+  }
+
+  prefixTicker.sort((a, b) => (b.hasDeepReport - a.hasDeepReport) || (a.ticker.length - b.ticker.length));
+  nameStartsWith.sort((a, b) => (b.hasDeepReport - a.hasDeepReport) || a.name.localeCompare(b.name));
+
+  return [
+    ...exactTicker,
+    ...prefixTicker,
+    ...nameStartsWith,
+    ...wordMatch,
+    ...substringMatch
+  ].slice(0, 12);
+}
+
+async function fetchExternalSymbolMatches(query) {
+  if (!query || query.trim().length < 2) return [];
+  const results = [];
+
+  if (STATE.finnhubKey) {
+    try {
+      const data = await finnhubGet('/search', { q: query.trim() }, 60000);
+      if (data && Array.isArray(data.result)) {
+        data.result.slice(0, 10).forEach(r => {
+          if (r.symbol && !r.symbol.includes(':')) {
+            results.push({
+              ticker: r.symbol.toUpperCase(),
+              name: r.description || r.symbol,
+              exchange: r.symbol.endsWith('.AX') ? 'ASX' : 'US / Global',
+              country: r.symbol.endsWith('.AX') ? 'AU' : 'US',
+              type: r.type || 'Common Stock',
+              hasDeepReport: Boolean(DEMO_STOCKS[r.symbol.toUpperCase()])
+            });
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  if (results.length === 0) {
+    try {
+      const yUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query.trim())}&quotesCount=10&newsCount=0`;
+      const res = await fetch(yUrl);
+      if (res.ok) {
+        const yData = await res.json();
+        if (yData?.quotes) {
+          yData.quotes.forEach(q => {
+            if (q.symbol && (q.quoteType === 'EQUITY' || q.quoteType === 'ETF')) {
+              results.push({
+                ticker: q.symbol.toUpperCase(),
+                name: q.shortname || q.longname || q.symbol,
+                exchange: q.exchDisp || q.exchange || 'Global',
+                country: q.symbol.endsWith('.AX') ? 'AU' : 'US',
+                type: q.quoteType,
+                hasDeepReport: Boolean(DEMO_STOCKS[q.symbol.toUpperCase()])
+              });
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (results.length > 0) {
+    const existing = new Set(STATE.symbolUniverse.map(x => x.ticker));
+    results.forEach(r => {
+      if (!existing.has(r.ticker)) {
+        STATE.symbolUniverse.push(r);
+        existing.add(r.ticker);
+      }
+    });
+    updateUniverseBadge();
+  }
+  return results;
+}
+
+function initSearch() {
+  const input = document.getElementById('global-search-input');
+  const dropdown = document.getElementById('search-dropdown');
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== input && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+      e.preventDefault();
+      input.focus();
+    }
+    if (e.key === 'Escape') {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  input.addEventListener('focus', () => renderSearchDropdown(input.value));
+  input.addEventListener('input', (e) => {
+    const val = e.target.value;
+    renderSearchDropdown(val);
+    clearTimeout(liveLookupTimer);
+    if (val.trim().length >= 2) {
+      liveLookupTimer = setTimeout(async () => {
+        const extra = await fetchExternalSymbolMatches(val);
+        if (extra.length > 0 && document.activeElement === input) {
+          renderSearchDropdown(input.value);
+        }
+      }, 260);
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && input.value.trim()) {
+      const top = rankTopResults(input.value);
+      const chosen = top.length > 0 ? top[0].ticker : input.value.trim().toUpperCase();
+      dropdown.classList.add('hidden');
+      openStockPage(chosen);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('global-search-wrapper').contains(e.target)) {
+      dropdown.classList.add('hidden');
+    }
+  });
+}
+
+function renderSearchDropdown(query) {
+  const dropdown = document.getElementById('search-dropdown');
+  const q = query.trim();
+
+  if (!q) {
+    const historyItems = STATE.searchHistory.slice(0, 6);
+    dropdown.innerHTML = `
+      <div class="p-3">
+        <div class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-2 mb-2">
+          <span>Recent Searches (${STATE.symbolUniverse.length.toLocaleString()} Symbols Indexed)</span>
+          <button onclick="STATE.searchHistory=[]; savePersistence(); renderSearchDropdown('');" class="text-slate-500 hover:text-slate-300">Clear</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5 px-2 mb-3">
+          ${historyItems.map(t => `
+            <button onclick="openStockPage('${t}'); document.getElementById('search-dropdown').classList.add('hidden');"
+              class="px-2.5 py-1 rounded-lg bg-terminal-elevated hover:bg-sky-500/20 border border-terminal-border hover:border-sky-500/40 text-xs font-mono text-slate-200 transition">
+              ${t}
+            </button>
+          `).join('')}
+        </div>
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-2 mb-1.5">Popular US &amp; ASX Tickers</div>
+        ${['NVDA', 'AAPL', 'MSFT', 'TSLA', 'BHP.AX', 'CBA.AX', 'XRO.AX'].map(t => {
+          const item = STATE.symbolUniverse.find(x => x.ticker === t) || { ticker: t, name: t, exchange: 'US/ASX' };
+          return `
+            <button onclick="openStockPage('${item.ticker}'); document.getElementById('search-dropdown').classList.add('hidden');"
+              class="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-terminal-elevated text-left transition">
+              <div>
+                <span class="font-mono font-bold text-white text-sm mr-2">${item.ticker}</span>
+                <span class="text-xs text-slate-300">${item.name}</span>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">${item.exchange}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+    dropdown.classList.remove('hidden');
+    return;
+  }
+
+  const matches = rankTopResults(q);
+  const directTicker = q.toUpperCase().replace(/[^A-Z0-9.\-]/g, '');
+
+  dropdown.innerHTML = `
+    <div class="p-2">
+      <div class="flex items-center justify-between px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        <span>Top Results for "${escapeHtml(q)}"</span>
+        <span class="font-mono text-sky-400">Searching ${STATE.symbolUniverse.length.toLocaleString()} equities</span>
+      </div>
+      ${matches.map((m, idx) => {
+        const liveData = getStockRecord(m.ticker);
+        return `
+          <button onclick="openStockPage('${m.ticker}'); document.getElementById('search-dropdown').classList.add('hidden');"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-terminal-elevated text-left transition group ${idx === 0 ? 'bg-sky-500/5 border border-sky-500/20' : ''}">
+            <div class="min-w-0 pr-3">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-white group-hover:text-sky-400 text-sm">${m.ticker}</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">${m.exchange}</span>
+                ${m.hasDeepReport
+                  ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Full Brief</span>`
+                  : `<span class="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-300">${m.type || 'Equity'}</span>`}
+              </div>
+              <div class="text-xs text-slate-400 truncate mt-0.5">${m.name}</div>
+            </div>
+            <div class="text-right shrink-0">
+              ${liveData && liveData.price !== null
+                ? `<div class="font-mono text-xs font-semibold text-white">${fmtPrice(liveData.price, liveData.currency)}</div>
+                   <div class="text-[11px]">${fmtBadgePct(liveData.changePct)}</div>`
+                : `<span class="text-xs text-sky-400 font-medium">Open Research →</span>`
+              }
+            </div>
+          </button>
+        `;
+      }).join('')}
+      ${directTicker ? `
+        <button onclick="openStockPage('${directTicker}'); document.getElementById('search-dropdown').classList.add('hidden');"
+          class="w-full mt-1 flex items-center justify-between px-3 py-2.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-left transition">
+          <span class="text-xs text-sky-300">Direct lookup ticker <strong class="font-mono text-white">${directTicker}</strong> via live Finnhub feed</span>
+          <span class="text-xs font-semibold text-sky-400">Lookup →</span>
+        </button>
+      ` : ''}
+    </div>
+  `;
+  dropdown.classList.remove('hidden');
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+// ============================================================================
+// 8. NAVIGATION, WATCHLIST & QUICK TAPE
+// ============================================================================
+function navigate(route, param = null) {
+  STATE.route = route;
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    if (btn.dataset.nav === route) {
+      btn.className = 'nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-terminal-elevated flex items-center gap-1.5';
+    } else {
+      btn.className = 'nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-terminal-elevated/60 transition flex items-center gap-1.5';
+    }
+  });
+
+  if (route === 'home') renderHomeView();
+  else if (route === 'stock') renderStockView(param || STATE.activeTicker);
+  else if (route === 'growth') renderGrowthView();
+  else if (route === 'compare') renderCompareView();
+  else if (route === 'watchlist') renderWatchlistView();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openStockPage(ticker) {
+  const t = ticker.toUpperCase().trim();
+  STATE.activeTicker = t;
+  STATE.recentlyViewed = [t, ...STATE.recentlyViewed.filter(x => x !== t)].slice(0, 8);
+  STATE.searchHistory = [t, ...STATE.searchHistory.filter(x => x !== t)].slice(0, 8);
+  savePersistence();
+  syncWebSocketSubscriptions();
+  navigate('stock', t);
+}
+
+function toggleWatchlist(ticker) {
+  const t = ticker.toUpperCase();
+  if (STATE.watchlist.includes(t)) {
+    STATE.watchlist = STATE.watchlist.filter(x => x !== t);
+  } else {
+    STATE.watchlist = [t, ...STATE.watchlist];
+  }
+  savePersistence();
+  syncWebSocketSubscriptions();
+  if (STATE.route === 'stock') renderStockView(STATE.activeTicker, true);
+  else if (STATE.route === 'watchlist') renderWatchlistView();
+  else if (STATE.route === 'home') renderHomeView();
+}
+
+function renderQuickTape() {
+  const container = document.getElementById('quick-tape-list');
+  if (!container) return;
+  const combined = Array.from(new Set([...STATE.recentlyViewed, ...Object.keys(DEMO_STOCKS)])).slice(0, 10);
+  container.innerHTML = combined.map(t => {
+    const s = getStockRecord(t);
+    if (!s || s.price === null) {
+      return `
+        <button onclick="openStockPage('${t}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-terminal-surface hover:bg-terminal-elevated border border-terminal-border transition">
+          <span class="font-mono font-semibold text-white">${t}</span>
+          <span class="text-slate-400 text-[11px]">Inspect</span>
+        </button>
+      `;
+    }
+    const isPos = s.changePct >= 0;
+    return `
+      <button onclick="openStockPage('${t}')" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-terminal-surface hover:bg-terminal-elevated border border-terminal-border transition">
+        <span class="font-mono font-semibold text-white">${s.ticker}</span>
+        <span data-live-price="${s.ticker}" class="font-mono text-slate-300 tabular-nums">${fmtPrice(s.price, s.currency)}</span>
+        <span data-live-badge="${s.ticker}" class="font-mono tabular-nums ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${s.changePct.toFixed(2)}%</span>
+      </button>
+    `;
+  }).join('');
+}
+
+// ============================================================================
+// 9. VIEW 1: HOMEPAGE TERMINAL OVERVIEW
+// ============================================================================
+function renderHomeView() {
+  const root = document.getElementById('app-root');
+  const usStocks = Object.values(DEMO_STOCKS).filter(s => s.country === 'United States');
+  const asxStocks = Object.values(DEMO_STOCKS).filter(s => s.country === 'Australia');
+  const growthStocks = Object.values(DEMO_STOCKS).filter(s => s.isGrowthCandidate);
+  const allNews = Object.values(DEMO_STOCKS).flatMap(s => s.news.map(n => ({ ...n, ticker: s.ticker, company: s.name }))).slice(0, 5);
+
+  root.innerHTML = `
+    <div class="space-y-8 fade-in">
+      <!-- HERO & TERMINAL MISSION -->
+      <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0E172A] via-[#0B1221] to-[#080D18] border border-terminal-borderLight p-6 sm:p-8 lg:p-10">
+        <div class="grid lg:grid-cols-12 gap-8 items-center">
+          <div class="lg:col-span-7 space-y-4">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/25 text-sky-300 text-xs font-medium">
+              <span>Institutional Equity Research • ${STATE.symbolUniverse.length.toLocaleString()} Searchable Stocks</span>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
+              Understand <span class="text-sky-400">what</span> a company does and <span class="text-emerald-400">why</span> its stock moves.
+            </h1>
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
+              MarketWhy translates financial filings, earnings catalysts, and market context into plain-English research briefs across 10,000+ US and Australian ASX equities—separating confirmed corporate facts from speculative explanations.
+            </p>
+
+            <!-- Hero Search Box -->
+            <div class="pt-2 max-w-xl">
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input
+                  id="hero-search-input"
+                  type="text"
+                  placeholder="Enter any ticker or company (e.g. NVDA, TSLA, BHP.AX, XRO.AX)..."
+                  onkeydown="if(event.key==='Enter' && this.value.trim()) { const top = rankTopResults(this.value); openStockPage(top.length ? top[0].ticker : this.value.trim()); }"
+                  class="flex-1 bg-[#060911] border border-terminal-borderLight focus:border-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none"
+                />
+                <button
+                  onclick="const v=document.getElementById('hero-search-input').value.trim(); if(v){ const top=rankTopResults(v); openStockPage(top.length ? top[0].ticker : v); } else openStockPage('NVDA');"
+                  class="px-5 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-sm transition shrink-0">
+                  Research Stock
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 mt-3 text-xs">
+                <span class="text-slate-500">Popular:</span>
+                ${['NVDA', 'MSFT', 'AAPL', 'PLTR', 'BHP.AX', 'CBA.AX', 'CSL.AX', 'XRO.AX'].map(t => `
+                  <button onclick="openStockPage('${t}')" class="px-2.5 py-1 rounded-lg bg-terminal-elevated hover:bg-slate-800 border border-terminal-border font-mono text-slate-200 transition">${t}</button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Market Snapshot Pulse Cards -->
+          <div class="lg:col-span-5 grid grid-cols-2 gap-3">
+            <div class="bg-[#080D18]/90 border border-terminal-border rounded-xl p-4">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>US AI &amp; Tech Pulse</span>
+                <span class="text-emerald-400 font-mono">+1.68%</span>
+              </div>
+              <div class="text-lg font-bold text-white font-mono">NASDAQ Leaders</div>
+              <p class="text-[11px] text-slate-400 mt-1">Hyperscaler AI capex &amp; cloud backlog drive semiconductor and SaaS momentum.</p>
+            </div>
+            <div class="bg-[#080D18]/90 border border-terminal-border rounded-xl p-4">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>ASX 200 Pulse</span>
+                <span class="text-emerald-400 font-mono">+0.84%</span>
+              </div>
+              <div class="text-lg font-bold text-white font-mono">Banks &amp; Resources</div>
+              <p class="text-[11px] text-slate-400 mt-1">Iron ore rebound lifts BHP/RIO while retail banks hold steady credit quality.</p>
+            </div>
+            <div class="bg-[#080D18]/90 border border-terminal-border rounded-xl p-4">
+              <div class="text-xs text-slate-400 mb-1">Searchable Universe</div>
+              <div class="text-lg font-bold text-sky-400 font-mono">${STATE.symbolUniverse.length.toLocaleString()} Stocks</div>
+              <p class="text-[11px] text-slate-400 mt-1">Instant ranked top results across NYSE, NASDAQ &amp; ASX listings.</p>
+            </div>
+            <div class="bg-[#080D18]/90 border border-terminal-border rounded-xl p-4">
+              <div class="text-xs text-slate-400 mb-1">Movement Engine</div>
+              <div class="text-lg font-bold text-emerald-400">Fact vs. Theory</div>
+              <p class="text-[11px] text-slate-400 mt-1">Every brief separates verified filings from market explanations.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STOCKS WITH STRUCTURAL GROWTH CATALYSTS -->
+      <section>
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold text-white">Stocks With Structural Growth Catalysts</h2>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Research Screen</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Companies exhibiting strong revenue expansion, secular industry tailwinds, and identifiable operational catalysts (not guaranteed returns).</p>
+          </div>
+          <button onclick="navigate('growth')" class="text-xs font-semibold text-sky-400 hover:text-sky-300 transition shrink-0">
+            Open Full Growth Radar →
+          </button>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${growthStocks.slice(0, 6).map(s => {
+            const live = getStockRecord(s.ticker) || s;
+            return `
+              <div onclick="openStockPage('${s.ticker}')" class="cursor-pointer bg-terminal-surface hover:bg-terminal-elevated/90 border border-terminal-border hover:border-sky-500/40 rounded-xl p-5 transition flex flex-col justify-between group">
+                <div>
+                  <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-lg bg-gradient-to-br ${s.logoBg} border flex items-center justify-center font-mono font-bold text-xs">
+                        ${s.ticker.replace('.AX', '')}
+                      </div>
+                      <div>
+                        <div class="flex items-center gap-1.5">
+                          <span class="font-mono font-bold text-white group-hover:text-sky-400 transition">${s.ticker}</span>
+                          <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">${s.exchange}</span>
+                        </div>
+                        <div class="text-xs text-slate-400 line-clamp-1">${s.name}</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div data-live-price="${s.ticker}" class="font-mono font-bold text-sm text-white tabular-nums">${fmtPrice(live.price, s.currency)}</div>
+                      <div data-live-badge="${s.ticker}">${fmtBadgePct(live.changePct)}</div>
+                    </div>
+                  </div>
+                  <div class="inline-block px-2.5 py-1 rounded-md bg-sky-500/10 border border-sky-500/20 text-sky-300 text-[11px] font-medium mb-2.5">
+                    Theme: ${s.growthTheme}
+                  </div>
+                  <p class="text-xs text-slate-300 leading-relaxed mb-4">${s.growthCatalystSummary}</p>
+                </div>
+                <div class="pt-3 border-t border-terminal-border/80 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                  <span>Rev Growth: <strong class="text-emerald-400">+${s.revGrowth}%</strong></span>
+                  <span>Net Margin: <strong class="text-slate-200">${s.netMargin}%</strong></span>
+                  <span class="text-sky-400 group-hover:translate-x-0.5 transition">Why it moves →</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </section>
+
+      <!-- FEATURED US & AUSTRALIAN (ASX) COVERAGE -->
+      <section class="grid lg:grid-cols-2 gap-6">
+        <div class="bg-terminal-surface border border-terminal-border rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white">US Market Research Coverage</h3>
+              <p class="text-xs text-slate-400">NASDAQ &amp; NYSE leaders with full movement briefs</p>
+            </div>
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">USD</span>
+          </div>
+          <div class="divide-y divide-terminal-border">
+            ${usStocks.map(s => {
+              const live = getStockRecord(s.ticker) || s;
+              return `
+                <div onclick="openStockPage('${s.ticker}')" class="py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-terminal-elevated/50 px-2 rounded-lg transition">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono font-bold text-sm text-white">${s.ticker}</span>
+                      <span class="text-xs text-slate-300 truncate">${s.name}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">${s.movementSummary.headline}</div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <div data-live-price="${s.ticker}" class="font-mono text-sm font-semibold text-white tabular-nums">${fmtPrice(live.price, 'USD')}</div>
+                    <div data-live-badge="${s.ticker}">${fmtBadgePct(live.changePct)}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="bg-terminal-surface border border-terminal-border rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white">Australian Securities Exchange (ASX)</h3>
+              <p class="text-xs text-slate-400">ASX 200 blue-chips, banks, resources &amp; tech</p>
+            </div>
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">AUD</span>
+          </div>
+          <div class="divide-y divide-terminal-border">
+            ${asxStocks.map(s => {
+              const live = getStockRecord(s.ticker) || s;
+              return `
+                <div onclick="openStockPage('${s.ticker}')" class="py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-terminal-elevated/50 px-2 rounded-lg transition">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono font-bold text-sm text-white">${s.ticker}</span>
+                      <span class="text-xs text-slate-300 truncate">${s.name}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 truncate">${s.movementSummary.headline}</div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <div data-live-price="${s.ticker}" class="font-mono text-sm font-semibold text-white tabular-nums">${fmtPrice(live.price, 'AUD')}</div>
+                    <div data-live-badge="${s.ticker}">${fmtBadgePct(live.changePct)}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </section>
+
+      <!-- WATCHLIST PREVIEW & LATEST MARKET NEWS -->
+      <section class="grid lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-terminal-surface border border-terminal-border rounded-2xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-base font-bold text-white">Your Watchlist</h3>
+              <button onclick="navigate('watchlist')" class="text-xs text-sky-400 hover:text-sky-300 font-medium">Manage All →</button>
+            </div>
+            ${STATE.watchlist.length === 0 ? `
+              <div class="text-center py-8 text-xs text-slate-400">
+                No stocks saved yet. Search any company and click <strong>+ Watchlist</strong>.
+              </div>
+            ` : `
+              <div class="space-y-2.5">
+                ${STATE.watchlist.slice(0, 5).map(t => {
+                  const s = getStockRecord(t);
+                  if (!s || s.price === null) {
+                    return `
+                      <div onclick="openStockPage('${t}')" class="p-3 rounded-xl bg-[#080D18] border border-terminal-border hover:border-slate-700 cursor-pointer flex items-center justify-between">
+                        <span class="font-mono font-bold text-sm text-white">${t}</span>
+                        <span class="text-xs text-sky-400">View Research →</span>
+                      </div>
+                    `;
+                  }
+                  return `
+                    <div onclick="openStockPage('${s.ticker}')" class="p-3 rounded-xl bg-[#080D18] border border-terminal-border hover:border-slate-700 cursor-pointer flex items-center justify-between">
+                      <div>
+                        <div class="font-mono font-bold text-sm text-white">${s.ticker}</div>
+                        <div class="text-[11px] text-slate-400">${s.name}</div>
+                      </div>
+                      <div class="text-right">
+                        <div data-live-price="${s.ticker}" class="font-mono text-sm font-semibold text-white tabular-nums">${fmtPrice(s.price, s.currency)}</div>
+                        <div data-live-badge="${s.ticker}">${fmtBadgePct(s.changePct)}</div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+          <div class="mt-4 pt-3 border-t border-terminal-border flex items-center justify-between text-xs text-slate-400">
+            <span>Saved locally in your browser</span>
+            <button onclick="navigate('compare')" class="text-sky-400 hover:underline">Compare Stocks →</button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 bg-terminal-surface border border-terminal-border rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white">Latest Market &amp; Catalyst Headlines</h3>
+            <span class="text-[11px] text-slate-400">Research Digest</span>
+          </div>
+          <div class="divide-y divide-terminal-border">
+            ${allNews.map(item => `
+              <div class="py-3.5 first:pt-0 last:pb-0">
+                <div class="flex items-center gap-2 text-[11px] text-slate-400 mb-1">
+                  <button onclick="openStockPage('${item.ticker}')" class="font-mono font-bold text-sky-400 hover:underline">${item.ticker}</button>
+                  <span>•</span>
+                  <span>${item.source}</span>
+                  <span>•</span>
+                  <span>${item.date}</span>
+                </div>
+                <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-white hover:text-sky-400 transition block mb-1">
+                  ${item.title} ↗
+                </a>
+                <p class="text-xs text-slate-400 leading-relaxed">${item.summary}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+// ============================================================================
+// 10. VIEW 2: INDIVIDUAL STOCK RESEARCH PAGE
+// ============================================================================
+async function renderStockView(ticker, skipFetch = false) {
+  const root = document.getElementById('app-root');
+  const cleanTicker = ticker.toUpperCase().trim();
+  STATE.activeTicker = cleanTicker;
+  syncWebSocketSubscriptions();
+
+  if (!skipFetch) {
+    root.innerHTML = `
+      <div class="space-y-6 animate-pulse">
+        <div class="h-32 bg-terminal-surface border border-terminal-border rounded-2xl"></div>
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 h-80 bg-terminal-surface border border-terminal-border rounded-2xl"></div>
+          <div class="h-80 bg-terminal-surface border border-terminal-border rounded-2xl"></div>
+        </div>
+        <div class="h-64 bg-terminal-surface border border-terminal-border rounded-2xl"></div>
+      </div>
+    `;
+  }
+
+  const stock = skipFetch ? getStockRecord(cleanTicker) : await loadLiveStockData(cleanTicker);
+  const inWatchlist = STATE.watchlist.includes(stock.ticker);
+
+  root.innerHTML = `
+    <div class="space-y-6 fade-in">
+      ${stock.apiNotices && stock.apiNotices.length > 0 ? `
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <strong class="font-semibold">Data Feed Notice:</strong> ${stock.apiNotices.join(' ')}
+          </div>
+          <button onclick="openApiModal()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold shrink-0 transition">
+            API Settings
+          </button>
+        </div>
+      ` : ''}
+
+      <section class="bg-terminal-surface border border-terminal-borderLight rounded-2xl p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="flex items-start gap-4">
+            ${stock.logoUrl
+              ? `<img src="${stock.logoUrl}" alt="${stock.name}" class="w-14 h-14 rounded-xl object-contain bg-white p-1.5 shrink-0" onerror="this.style.display='none'">`
+              : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br ${stock.logoBg} border flex items-center justify-center font-mono font-bold text-base shrink-0">${stock.ticker.replace('.AX', '')}</div>`
+            }
+            <div>
+              <div class="flex flex-wrap items-center gap-2 mb-1">
+                <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">${stock.name}</h1>
+                <span class="px-2.5 py-0.5 rounded-md bg-terminal-elevated border border-terminal-borderLight font-mono text-sm font-bold text-sky-400">${stock.ticker}</span>
+                ${stock.isLive
+                  ? `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>Live Quote</span>`
+                  : `<span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">Demo Snapshot</span>`
+                }
+              </div>
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+                <span>Exchange: <strong class="text-slate-200">${stock.exchange}</strong></span>
+                <span>•</span>
+                <span>Country: <strong class="text-slate-200">${stock.country}</strong></span>
+                <span>•</span>
+                <span>Sector: <strong class="text-slate-200">${stock.sector}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end justify-between gap-3">
+            <div class="lg:text-right">
+              <div data-live-price="${stock.ticker}" class="text-3xl font-bold font-mono text-white tabular-nums px-1 rounded">
+                ${fmtPrice(stock.price, stock.currency)}
+              </div>
+              <div data-live-change="${stock.ticker}" class="text-sm mt-0.5">
+                ${fmtChange(stock.change, stock.changePct, stock.currency)}
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="toggleWatchlist('${stock.ticker}')"
+                class="px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${inWatchlist
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                  : 'bg-terminal-elevated border-terminal-borderLight text-white hover:border-sky-500'}">
+                ${inWatchlist ? '✓ In Watchlist' : '+ Add to Watchlist'}
+              </button>
+              <button onclick="addToCompareAndGo('${stock.ticker}')"
+                class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 transition">
+                ⇄ Compare
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p class="mt-5 pt-4 border-t border-terminal-border text-sm text-slate-300 leading-relaxed">
+          ${stock.description}
+        </p>
+      </section>
+
+      <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-terminal-surface border border-terminal-border rounded-xl p-4">
+          <div class="text-[11px] text-slate-400 mb-1">Market Cap</div>
+          <div class="text-base font-bold font-mono text-white tabular-nums">${fmtMarketCap(stock.marketCap, stock.currency)}</div>
+        </div>
+        <div class="bg-terminal-surface border border-terminal-border rounded-xl p-4">
+          <div class="text-[11px] text-slate-400 mb-1">P/E Ratio (TTM)</div>
+          <div class="text-base font-bold font-mono text-white tabular-nums">${stock.peRatio ? Number(stock.peRatio).toFixed(1) + 'x' : 'N/A'}</div>
+        </div>
+        <div class="bg-terminal-surface border border-terminal-border rounded-xl p-4">
+          <div class="text-[11px] text-slate-400 mb-1">52-Week Range</div>
+          <div class="text-xs font-bold font-mono text-white tabular-nums">
+            ${stock.low52 && stock.high52 ? `${fmtPrice(stock.low52, stock.currency)} – ${fmtPrice(stock.high52, stock.currency)}` : 'N/A'}
+          </div>
+        </div>
+        <div class="bg-terminal-surface border border-terminal-border rounded-xl p-4">
+          <div class="text-[11px] text-slate-400 mb-1">Revenue Growth</div>
+          <div class="text-base font-bold font-mono tabular-nums ${stock.revGrowth > 0 ? 'text-emerald-400' : 'text-slate-200'}">
+            ${stock.revGrowth !== null && stock.revGrowth !== undefined ? `${stock.revGrowth > 0 ? '+' : ''}${Number(stock.revGrowth).toFixed(1)}%` : 'N/A'}
+          </div>
+        </div>
+        <div class="bg-terminal-surface border border-terminal-border rounded-xl p-4">
+          <div class="text-[11px] text-slate-400 mb-1">Net Profit Margin</div>
+          <div class="text-base font-bold font-mono text-white tabular-nums">
+            ${stock.netMargin !== null && stock.netMargin !== undefined ? `${Number(stock.netMargin).toFixed(1)}%` : 'N/A'}
+          </div>
+        </div>
+        <div class="bg-terminal-surface border border-terminal-border rounded-xl p-4">
+          <div class="text-[11px] text-slate-400 mb-1">Volume / Yield</div>
+          <div class="text-xs font-bold font-mono text-white tabular-nums">
+            ${stock.volume} ${stock.dividendYield ? `• ${Number(stock.dividendYield).toFixed(2)}% Yld` : ''}
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-gradient-to-br from-[#0D1629] to-[#090F1D] border border-sky-500/35 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            </div>
+            <div>
+              <h2 class="text-lg sm:text-xl font-bold text-white">Why is ${stock.ticker} moving?</h2>
+              <p class="text-xs text-slate-400">Evidence-separated driver analysis • Confirmed disclosures vs. market hypotheses</p>
+            </div>
+          </div>
+          <span class="text-[11px] font-mono px-2.5 py-1 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 self-start">
+            MarketWhy Intelligence
+          </span>
+        </div>
+
+        <div class="bg-[#070B14] border border-terminal-border rounded-xl p-4 mb-5">
+          <div class="text-xs font-semibold uppercase tracking-wider text-sky-400 mb-1">Primary Driver Synthesis</div>
+          <p class="text-sm sm:text-base font-medium text-white leading-relaxed">${stock.movementSummary.headline}</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-5">
+          <div class="bg-[#080D18] border border-emerald-500/25 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Confirmed Facts &amp; Disclosed Catalysts</h3>
+            </div>
+            <ul class="space-y-2.5 text-xs sm:text-sm text-slate-200">
+              ${stock.movementSummary.confirmedFacts.map(fact => `
+                <li class="flex items-start gap-2.5 leading-relaxed">
+                  <span class="text-emerald-400 font-bold mt-0.5">✓</span>
+                  <span>${fact}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+
+          <div class="bg-[#080D18] border border-amber-500/25 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-amber-300">Possible Explanations &amp; Market Context</h3>
+            </div>
+            <ul class="space-y-2.5 text-xs sm:text-sm text-slate-300">
+              ${stock.movementSummary.possibleExplanations.map(exp => `
+                <li class="flex items-start gap-2.5 leading-relaxed">
+                  <span class="text-amber-400 font-bold mt-0.5">~</span>
+                  <span>${exp}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-terminal-surface border border-terminal-border rounded-2xl p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-white">Price Performance History (${stock.currency})</h3>
+            <p class="text-xs text-slate-400">
+              ${stock.isLive ? 'Live intraday ticks append automatically to 1D view • Historical intervals reflect available dataset' : 'Illustrative historical trajectory (Demo Dataset)'}
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1 bg-[#080D18] p-1 rounded-xl border border-terminal-border">
+            ${['1D', '1W', '1M', '3M', '6M', '1Y', '5Y'].map(r => `
+              <button onclick="updateStockChartRange('${r}')"
+                class="range-btn px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition ${STATE.activeRange === r ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:text-white'}">
+                ${r}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div id="stock-chart-container" class="h-72 w-full relative">
+          ${stock.history
+            ? `<canvas id="stock-price-chart"></canvas>`
+            : `<div class="h-full flex flex-col items-center justify-center text-center bg-[#080D18] border border-dashed border-terminal-borderLight rounded-xl p-6">
+                <div class="text-sm font-semibold text-slate-200 mb-1">Historical Chart Data Unavailable</div>
+                <p class="text-xs text-slate-400 max-w-md">Historical price candles for ${stock.ticker} are restricted on Finnhub's free tier or unavailable for this exchange. Real-time quote and fundamental metrics remain unaffected.</p>
+              </div>`
+          }
+        </div>
+      </section>
+
+      <section class="grid md:grid-cols-2 gap-6">
+        <div class="bg-terminal-surface border border-emerald-500/30 rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold text-xs uppercase tracking-wider">Bull Case</span>
+              <h3 class="text-base font-bold text-white">Growth &amp; Upside Drivers</h3>
+            </div>
+          </div>
+          <div class="space-y-3.5">
+            ${stock.bullCase.map(b => `
+              <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+                <p class="text-xs sm:text-sm text-slate-200 leading-relaxed mb-2">${b.point}</p>
+                <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                  <span>Source: ${b.source}</span>
+                  <span>${b.date}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="bg-terminal-surface border border-rose-500/30 rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-400 font-bold text-xs uppercase tracking-wider">Bear Case</span>
+              <h3 class="text-base font-bold text-white">Risks &amp; Valuation Headwinds</h3>
+            </div>
+          </div>
+          <div class="space-y-3.5">
+            ${stock.bearCase.map(b => `
+              <div class="bg-[#080D18] border border-terminal-border rounded-xl p-3.5">
+                <p class="text-xs sm:text-sm text-slate-200 leading-relaxed mb-2">${b.point}</p>
+                <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                  <span>Source: ${b.source}</span>
+                  <span>${b.date}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-terminal-surface border border-terminal-border rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-bold text-white">Recent Coverage &amp; Filings for ${stock.ticker}</h3>
+          <span class="text-xs text-slate-400">${stock.news.length} articles</span>
+        </div>
+        ${stock.news.length === 0 ? `
+          <div class="text-center py-8 text-xs text-slate-400 bg-[#080D18] rounded-xl border border-terminal-border">
+            No recent company-specific news returned for ${stock.ticker}.
+          </div>
+        ` : `
+          <div class="grid md:grid-cols-2 gap-4">
+            ${stock.news.map(n => `
+              <div class="bg-[#080D18] border border-terminal-border hover:border-slate-700 rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                    <span class="font-semibold text-sky-400">${n.source}</span>
+                    <span>${n.date}</span>
+                  </div>
+                  <h4 class="text-sm font-semibold text-white leading-snug mb-2">${n.title}</h4>
+                  <p class="text-xs text-slate-400 leading-relaxed mb-3">${n.summary}</p>
+                </div>
+                <a href="${n.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-sky-400 hover:text-sky-300">
+                  Read Original Article ↗
+                </a>
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </section>
+    </div>
+  `;
+
+  if (stock.history) {
+    drawStockChart(stock, STATE.activeRange);
+  }
+}
+
+function updateStockChartRange(range) {
+  STATE.activeRange = range;
+  document.querySelectorAll('.range-btn').forEach(btn => {
+    btn.className = btn.textContent.trim() === range
+      ? 'range-btn px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition bg-sky-500 text-slate-950'
+      : 'range-btn px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition text-slate-400 hover:text-white';
+  });
+  const stock = getStockRecord(STATE.activeTicker);
+  if (stock && stock.history) drawStockChart(stock, range);
+}
+
+function drawStockChart(stock, range) {
+  const canvas = document.getElementById('stock-price-chart');
+  if (!canvas) return;
+  const series = stock.history[range] || stock.history['3M'] || [];
+  if (series.length === 0) return;
+
+  if (STATE.chartInstance) STATE.chartInstance.destroy();
+
+  const isPositive = series[series.length - 1] >= series[0];
+  const strokeColor = isPositive ? '#10B981' : '#F43F5E';
+  const fillColor = isPositive ? 'rgba(16, 185, 129, 0.14)' : 'rgba(244, 63, 94, 0.14)';
+  const labels = series.map((_, idx) => `${range} • T${idx + 1}`);
+
+  STATE.chartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: `${stock.ticker} (${stock.currency})`,
+        data: series,
+        borderColor: strokeColor,
+        backgroundColor: fillColor,
+        borderWidth: 2.2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: strokeColor
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0C1220',
+          borderColor: '#2B3A55',
+          borderWidth: 1,
+          titleColor: '#94A3B8',
+          bodyColor: '#F8FAFC',
+          bodyFont: { family: 'JetBrains Mono', weight: 'bold' },
+          callbacks: {
+            label: (ctx) => `${fmtPrice(ctx.parsed.y, stock.currency)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(30, 41, 59, 0.45)' },
+          ticks: { color: '#64748B', font: { family: 'JetBrains Mono', size: 10 } }
+        },
+        y: {
+          position: 'right',
+          grid: { color: 'rgba(30, 41, 59, 0.45)' },
+          ticks: {
+            color: '#94A3B8',
+            font: { family: 'JetBrains Mono', size: 11 },
+            callback: (val) => `${stock.currency === 'AUD' ? 'A$' : '$'}${val}`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ============================================================================
+// 11. VIEW 3: GROWTH CATALYST RADAR
+// ============================================================================
+function renderGrowthView() {
+  const root = document.getElementById('app-root');
+  const allGrowth = Object.values(DEMO_STOCKS).filter(s => s.isGrowthCandidate);
+
+  const filtered = allGrowth.filter(s => {
+    const marketOk = STATE.growthMarketFilter === 'ALL' ||
+      (STATE.growthMarketFilter === 'US' && s.country === 'United States') ||
+      (STATE.growthMarketFilter === 'ASX' && s.country === 'Australia');
+    return marketOk;
+  });
+
+  root.innerHTML = `
+    <div class="space-y-6 fade-in">
+      <div class="bg-terminal-surface border border-terminal-borderLight rounded-2xl p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Secular Growth Screener</span>
+            <h1 class="text-2xl font-bold text-white mt-2">Companies Positioned for Structural Growth</h1>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+              Filtered by top-line revenue momentum, return on equity, and identifiable multi-year product or infrastructure catalysts. High growth potential also carries valuation and execution risks—always review both Bull and Bear theses.
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5 bg-[#080D18] p-1 rounded-xl border border-terminal-border self-start">
+            ${['ALL', 'US', 'ASX'].map(m => `
+              <button onclick="STATE.growthMarketFilter='${m}'; renderGrowthView();"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition ${STATE.growthMarketFilter === m ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:text-white'}">
+                ${m === 'ALL' ? 'All Markets' : m}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-5">
+        ${filtered.map(s => {
+          const live = getStockRecord(s.ticker) || s;
+          return `
+            <div class="bg-terminal-surface border border-terminal-border hover:border-sky-500/40 rounded-2xl p-6 flex flex-col justify-between transition">
+              <div>
+                <div class="flex items-start justify-between gap-4 mb-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${s.logoBg} border flex items-center justify-center font-mono font-bold text-xs">
+                      ${s.ticker.replace('.AX', '')}
+                    </div>
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold text-lg text-white">${s.ticker}</span>
+                        <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">${s.exchange}</span>
+                      </div>
+                      <div class="text-xs text-slate-400">${s.name}</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div data-live-price="${s.ticker}" class="font-mono font-bold text-base text-white tabular-nums">${fmtPrice(live.price, s.currency)}</div>
+                    <div data-live-badge="${s.ticker}">${fmtBadgePct(live.changePct)}</div>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <span class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Growth Theme: ${s.growthTheme}</span>
+                  <p class="text-sm text-slate-200 mt-1 leading-relaxed">${s.growthCatalystSummary}</p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2.5 bg-[#080D18] border border-terminal-border rounded-xl p-3 my-4 text-center font-mono">
+                  <div>
+                    <div class="text-[10px] text-slate-400">Rev Growth</div>
+                    <div class="text-sm font-bold text-emerald-400">+${s.revGrowth}%</div>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-slate-400">Net Margin</div>
+                    <div class="text-sm font-bold text-white">${s.netMargin}%</div>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-slate-400">P/E Ratio</div>
+                    <div class="text-sm font-bold text-slate-200">${s.peRatio}x</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between pt-3 border-t border-terminal-border">
+                <span class="text-[11px] text-slate-400 truncate max-w-[65%]">Key Risk: ${s.bearCase[0].point}</span>
+                <button onclick="openStockPage('${s.ticker}')" class="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition shrink-0">
+                  Full Analysis →
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================================
+// 12. VIEW 4: SIDE-BY-SIDE STOCK COMPARISON ENGINE
+// ============================================================================
+function addToCompareAndGo(ticker) {
+  const t = ticker.toUpperCase();
+  if (!STATE.compareTickers.includes(t)) {
+    if (STATE.compareTickers.length >= 4) STATE.compareTickers.shift();
+    STATE.compareTickers.push(t);
+  }
+  navigate('compare');
+}
+
+function addCompareTickerFromInput() {
+  const input = document.getElementById('compare-add-input');
+  const raw = input.value.trim();
+  if (!raw) return;
+  const top = rankTopResults(raw);
+  const val = top.length > 0 ? top[0].ticker : raw.toUpperCase();
+  if (!STATE.compareTickers.includes(val) && STATE.compareTickers.length < 4) {
+    STATE.compareTickers.push(val);
+    loadLiveStockData(val).then(() => renderCompareView());
+  }
+  input.value = '';
+}
+
+function removeCompareTicker(ticker) {
+  STATE.compareTickers = STATE.compareTickers.filter(t => t !== ticker);
+  renderCompareView();
+}
+
+function renderCompareView() {
+  const root = document.getElementById('app-root');
+  const stocks = STATE.compareTickers.map(t => getStockRecord(t) || buildUnavailableShell(t, 'Loading or connect Finnhub key.'));
+
+  root.innerHTML = `
+    <div class="space-y-6 fade-in">
+      <div class="bg-terminal-surface border border-terminal-borderLight rounded-2xl p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-white">Peer &amp; Multi-Stock Comparison</h1>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Compare up to 4 US or ASX companies across valuation multiples, growth rates, profitability, and indexed return trajectories.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="compare-add-input" type="text" placeholder="Add ticker (e.g. TSLA, CBA.AX)..."
+              onkeydown="if(event.key==='Enter') addCompareTickerFromInput()"
+              class="bg-[#080D18] border border-terminal-borderLight focus:border-sky-500 rounded-xl px-3.5 py-2 text-xs text-white outline-none w-52" />
+            <button onclick="addCompareTickerFromInput()" class="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition">
+              + Add
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          ${STATE.compareTickers.map(t => `
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-terminal-elevated border border-terminal-borderLight font-mono text-xs text-white">
+              ${t}
+              <button onclick="removeCompareTicker('${t}')" class="text-slate-400 hover:text-rose-400">✕</button>
+            </span>
+          `).join('')}
+        </div>
+      </div>
+
+      ${stocks.length === 0 ? `
+        <div class="bg-terminal-surface border border-terminal-border rounded-2xl p-12 text-center text-sm text-slate-400">
+          Add at least one ticker above to compare financials and performance.
+        </div>
+      ` : `
+        <div class="bg-terminal-surface border border-terminal-border rounded-2xl p-6">
+          <h3 class="text-base font-bold text-white mb-1">Normalized 3-Month Price Performance (% Return)</h3>
+          <p class="text-xs text-slate-400 mb-4">Rebased to 0% at start of period for apples-to-apples comparison across different share prices and currencies.</p>
+          <div class="h-72 w-full">
+            <canvas id="compare-perf-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-terminal-surface border border-terminal-border rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-[#080D18] border-b border-terminal-border text-slate-400 font-mono text-xs">
+                  <th class="py-3.5 px-4">Metric</th>
+                  ${stocks.map(s => `
+                    <th class="py-3.5 px-4">
+                      <button onclick="openStockPage('${s.ticker}')" class="font-bold text-white hover:text-sky-400 text-sm">${s.ticker}</button>
+                      <div class="text-[11px] font-sans font-normal text-slate-400">${s.name}</div>
+                    </th>
+                  `).join('')}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-terminal-border font-mono tabular-nums">
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Exchange / Currency</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 text-slate-200">${s.exchange} (${s.currency})</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Share Price</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 font-bold text-white">${fmtPrice(s.price, s.currency)}</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Daily Change</td>
+                  ${stocks.map(s => `<td class="py-3 px-4">${fmtBadgePct(s.changePct)}</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Market Capitalisation</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 text-slate-200">${fmtMarketCap(s.marketCap, s.currency)}</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">P/E Ratio (TTM)</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 text-slate-200">${s.peRatio ? Number(s.peRatio).toFixed(1) + 'x' : 'N/A'}</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Revenue Growth (YoY)</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 ${s.revGrowth > 0 ? 'text-emerald-400' : 'text-slate-300'}">${s.revGrowth !== null ? `${s.revGrowth > 0 ? '+' : ''}${Number(s.revGrowth).toFixed(1)}%` : 'N/A'}</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Net Profit Margin</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 text-slate-200">${s.netMargin !== null ? `${Number(s.netMargin).toFixed(1)}%` : 'N/A'}</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Return on Equity (ROE)</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 text-slate-200">${s.roe !== null ? `${Number(s.roe).toFixed(1)}%` : 'N/A'}</td>`).join('')}
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-sans text-slate-400">Dividend Yield</td>
+                  ${stocks.map(s => `<td class="py-3 px-4 text-slate-200">${s.dividendYield !== null ? `${Number(s.dividendYield).toFixed(2)}%` : 'N/A'}</td>`).join('')}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `}
+    </div>
+  `;
+
+  if (stocks.length > 0) drawCompareChart(stocks);
+}
+
+function drawCompareChart(stocks) {
+  const canvas = document.getElementById('compare-perf-chart');
+  if (!canvas) return;
+  if (STATE.compareChartInstance) STATE.compareChartInstance.destroy();
+
+  const palette = ['#38BDF8', '#10B981', '#F59E0B', '#A855F7'];
+  const datasets = stocks
+    .filter(s => s.history && s.history['3M'] && s.history['3M'].length > 1)
+    .map((s, idx) => {
+      const arr = s.history['3M'];
+      const base = arr[0];
+      return {
+        label: s.ticker,
+        data: arr.map(v => Number((((v - base) / base) * 100).toFixed(2))),
+        borderColor: palette[idx % palette.length],
+        backgroundColor: 'transparent',
+        borderWidth: 2.3,
+        tension: 0.3,
+        pointRadius: 3
+      };
+    });
+
+  const maxLen = Math.max(...datasets.map(d => d.data.length), 1);
+  const labels = Array.from({ length: maxLen }, (_, i) => `T${i + 1}`);
+
+  STATE.compareChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#E2E8F0', font: { family: 'JetBrains Mono', size: 11 } } },
+        tooltip: {
+          backgroundColor: '#0C1220',
+          borderColor: '#2B3A55',
+          borderWidth: 1,
+          callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y}%` }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(30, 41, 59, 0.45)' }, ticks: { color: '#64748B' } },
+        y: {
+          position: 'right',
+          grid: { color: 'rgba(30, 41, 59, 0.45)' },
+          ticks: { color: '#94A3B8', font: { family: 'JetBrains Mono', size: 11 }, callback: (v) => `${v}%` }
+        }
+      }
+    }
+  });
+}
+
+// ============================================================================
+// 13. VIEW 5: PERSISTENT WATCHLIST VIEW
+// ============================================================================
+function renderWatchlistView() {
+  const root = document.getElementById('app-root');
+  root.innerHTML = `
+    <div class="space-y-6 fade-in">
+      <div class="bg-terminal-surface border border-terminal-borderLight rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-white">Saved Watchlist</h1>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Persisted in your browser's local storage across refreshes. Click any row to open its full movement analysis.</p>
+        </div>
+        <button onclick="navigate('compare')" class="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition self-start">
+          Compare Watchlist Peers →
+        </button>
+      </div>
+
+      ${STATE.watchlist.length === 0 ? `
+        <div class="bg-terminal-surface border border-terminal-border rounded-2xl p-12 text-center space-y-3">
+          <div class="text-base font-semibold text-white">Your watchlist is empty</div>
+          <p class="text-xs text-slate-400 max-w-md mx-auto">Search for any US or ASX stock using the top bar and click <strong>+ Add to Watchlist</strong> to track it here.</p>
+          <button onclick="navigate('home')" class="px-4 py-2 rounded-xl bg-terminal-elevated border border-terminal-borderLight text-xs font-semibold text-white hover:border-sky-500 transition">
+            Explore Featured Stocks
+          </button>
+        </div>
+      ` : `
+        <div class="bg-terminal-surface border border-terminal-border rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-[#080D18] border-b border-terminal-border text-slate-400 font-mono text-xs">
+                  <th class="py-3.5 px-4">Ticker</th>
+                  <th class="py-3.5 px-4">Company</th>
+                  <th class="py-3.5 px-4">Exchange</th>
+                  <th class="py-3.5 px-4 text-right">Latest Price</th>
+                  <th class="py-3.5 px-4 text-right">Daily Change</th>
+                  <th class="py-3.5 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-terminal-border">
+                ${STATE.watchlist.map(t => {
+                  const s = getStockRecord(t) || buildUnavailableShell(t, 'Open to fetch live data.');
+                  return `
+                    <tr class="hover:bg-terminal-elevated/40 transition">
+                      <td class="py-3.5 px-4 font-mono font-bold text-white">
+                        <button onclick="openStockPage('${s.ticker}')" class="hover:text-sky-400">${s.ticker}</button>
+                      </td>
+                      <td class="py-3.5 px-4 text-slate-200">
+                        <button onclick="openStockPage('${s.ticker}')" class="hover:underline text-left">${s.name}</button>
+                      </td>
+                      <td class="py-3.5 px-4 font-mono text-xs text-slate-400">${s.exchange}</td>
+                      <td data-live-price="${s.ticker}" class="py-3.5 px-4 text-right font-mono font-semibold text-white tabular-nums">${fmtPrice(s.price, s.currency)}</td>
+                      <td data-live-badge="${s.ticker}" class="py-3.5 px-4 text-right">${fmtBadgePct(s.changePct)}</td>
+                      <td class="py-3.5 px-4 text-right space-x-2">
+                        <button onclick="openStockPage('${s.ticker}')" class="px-2.5 py-1 rounded bg-sky-500/15 text-sky-300 text-xs font-medium hover:bg-sky-500/25">Research</button>
+                        <button onclick="toggleWatchlist('${s.ticker}')" class="px-2.5 py-1 rounded bg-rose-500/15 text-rose-300 text-xs font-medium hover:bg-rose-500/25">Remove</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// ============================================================================
+// 14. MODALS & MOBILE MENU CONTROLS
+// ============================================================================
+function openApiModal() {
+  document.getElementById('finnhub-key-input').value = STATE.finnhubKey;
+  document.getElementById('api-status-msg').classList.add('hidden');
+  document.getElementById('api-modal').classList.remove('hidden');
+}
+
+function closeApiModal() {
+  document.getElementById('api-modal').classList.add('hidden');
+}
+
+async function saveFinnhubKey() {
+  const val = document.getElementById('finnhub-key-input').value.trim();
+  const msg = document.getElementById('api-status-msg');
+  if (!val) {
+    msg.textContent = 'Please enter a valid Finnhub API key or click Disconnect.';
+    msg.className = 'text-xs mb-4 text-rose-400';
+    msg.classList.remove('hidden');
+    return;
+  }
+  msg.textContent = 'Verifying key with Finnhub & indexing 10,000+ US symbols...';
+  msg.className = 'text-xs mb-4 text-sky-400';
+  msg.classList.remove('hidden');
+
+  try {
+    const testRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(val)}`);
+    if (!testRes.ok) throw new Error('Invalid or unauthorized Finnhub key.');
+    const data = await testRes.json();
+    if (data.error) throw new Error(data.error);
+
+    STATE.finnhubKey = val;
+    localStorage.setItem('marketwhy_finnhub_key', val);
+    STATE.apiCache.clear();
+    updateDataModeBadge();
+    await syncFullUsSymbolUniverse();
+    initWebSocketStream();
+    startRestPolling();
+    closeApiModal();
+    navigate(STATE.route, STATE.activeTicker);
+  } catch (err) {
+    msg.textContent = `Connection failed: ${err.message}`;
+    msg.className = 'text-xs mb-4 text-rose-400';
+  }
+}
+
+function clearFinnhubKey() {
+  STATE.finnhubKey = '';
+  localStorage.removeItem('marketwhy_finnhub_key');
+  STATE.apiCache.clear();
+  closeWebSocketStream();
+  if (STATE.pollTimer) clearInterval(STATE.pollTimer);
+  updateDataModeBadge();
+  closeApiModal();
+  navigate(STATE.route, STATE.activeTicker);
+}
+
+function updateDataModeBadge() {
+  const badge = document.getElementById('data-mode-badge');
+  const btnLabel = document.getElementById('api-btn-label');
+  const toggleBtn = document.getElementById('toggle-live-updates-btn');
+
+  if (STATE.finnhubKey) {
+    badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>Live Finnhub Connected • ${STATE.symbolUniverse.length.toLocaleString()} Stocks`;
+    btnLabel.textContent = 'Finnhub Live Active';
+    if (toggleBtn) toggleBtn.classList.remove('hidden');
+  } else {
+    badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30';
+    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>Demo Dataset + Live Symbol Search`;
+    btnLabel.textContent = 'Configure Live Finnhub API';
+    if (toggleBtn) toggleBtn.classList.add('hidden');
+  }
+  updateStreamStatusUI(STATE.ws && STATE.ws.readyState === WebSocket.OPEN);
+}
+
+function openLearnModal() { document.getElementById('learn-modal').classList.remove('hidden'); }
+function closeLearnModal() { document.getElementById('learn-modal').classList.add('hidden'); }
+function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
+
+// ============================================================================
+// 15. INITIALIZE APPLICATION
+// ============================================================================
+window.addEventListener('DOMContentLoaded', async () => {
+  initSymbolUniverse();
+  updateDataModeBadge();
+  updateWatchlistCount();
+  updateTimestampClock();
+  renderQuickTape();
+  initSearch();
+  navigate('home');
+
+  if (STATE.finnhubKey) {
+    await syncFullUsSymbolUniverse();
+    updateDataModeBadge();
+    initWebSocketStream();
+    startRestPolling();
+  }
+});
+</script>
+</body>
+</html>
